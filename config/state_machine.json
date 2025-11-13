@@ -1,0 +1,35 @@
+{
+  "states": ["proposed","approved","scheduled","queued","executed","canceled"],
+  "inputs": [
+    "forum_proposal","vote_passed","release_posted","epoch_published","timestamp_announced",
+    "timelock_queued","timelock_executed","safe_exec","cancellation"
+  ],
+  "transitions": {
+    "proposed": {
+      "vote_passed": "approved",
+      "release_posted": "approved"
+    },
+    "approved": {
+      "epoch_published": "scheduled",
+      "timestamp_announced": "scheduled",
+      "cancellation": "canceled"
+    },
+    "scheduled": {
+      "timelock_queued": "queued",
+      "timelock_executed": "executed",
+      "safe_exec": "executed",
+      "cancellation": "canceled"
+    },
+    "queued": {
+      "timelock_executed": "executed",
+      "safe_exec": "executed",
+      "cancellation": "canceled"
+    }
+  },
+  "countdown_update_triggers": [
+    "epoch_published","timestamp_announced","timelock_queued"
+  ],
+  "alert_default_milestones": [
+    "vote_passed","scheduled","T-24h","queued","executed"
+  ]
+}

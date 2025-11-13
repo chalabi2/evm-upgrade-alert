@@ -1,0 +1,121 @@
+version: 1
+chains:
+  - id: eth-mainnet
+    name: Ethereum Mainnet
+    type: L1
+    family: ethereum
+    genesis_unix: 1606824023
+    slot_seconds: 12
+    slots_per_epoch: 32
+    rpc_urls:
+      - https://rpc.ankr.com/eth
+    offchain_sources:
+      ethereum_org_roadmap: https://ethereum.org/en/roadmap/
+      ef_blog: https://blog.ethereum.org/
+      all_core_devs: https://github.com/ethereum/pm
+      client_releases:
+        - https://github.com/ethereum/go-ethereum/releases
+        - https://github.com/NethermindEth/nethermind/releases
+        - https://github.com/hyperledger/besu/releases
+        - https://github.com/prysmaticlabs/prysm/releases
+        - https://github.com/sigp/lighthouse/releases
+        - https://github.com/Consensys/teku/releases
+        - https://github.com/status-im/nimbus-eth2/releases
+    onchain_watch:
+      timelocks: []
+      safes: []
+
+  - id: eth-sepolia
+    name: Ethereum Sepolia
+    type: testnet
+    family: ethereum
+    genesis_unix: 1655733600
+    slot_seconds: 12
+    slots_per_epoch: 32
+    rpc_urls:
+      - https://rpc.sepolia.org
+    offchain_sources:
+      ethereum_org_roadmap: https://ethereum.org/en/roadmap/
+      ef_blog: https://blog.ethereum.org/
+      client_releases:
+        - https://github.com/eth-clients/*/releases
+    onchain_watch:
+      timelocks: []
+      safes: []
+
+  - id: base-mainnet
+    name: Base
+    type: L2
+    family: op-stack
+    rpc_urls:
+      - https://mainnet.base.org
+    offchain_sources:
+      notices: https://community.optimism.io/docs/chain/upgrades/
+      op_forum: https://gov.optimism.io/
+      base_status: https://www.base.org/
+      releases:
+        - https://github.com/ethereum-optimism/optimism/releases
+        - https://github.com/base-org
+    onchain_watch:
+      timelocks:
+        - name: OP Timelock (shared)
+          address: "0x272Cf01607783CC9DB7506244dc6ac2f113702FC"
+      safes:
+        - name: Base Security Council (Coinbase)
+          address: "0x0aA384EB2fedD2741277A0f72909A0d7275575D7"
+
+  - id: op-mainnet
+    name: Optimism Mainnet
+    type: L2
+    family: op-stack
+    rpc_urls:
+      - https://mainnet.optimism.io
+    offchain_sources:
+      notices: https://community.optimism.io/docs/chain/upgrades/
+      op_forum: https://gov.optimism.io/
+      releases:
+        - https://github.com/ethereum-optimism/optimism/releases
+    onchain_watch:
+      timelocks:
+        - name: OP Timelock
+          address: "0x272Cf01607783CC9DB7506244dc6ac2f113702FC"
+      safes:
+        - name: OP Security Council (Agora)
+          address: "0x652BC529E171847E2fFddCeA13567643C84ccB5f"
+        - name: OP Security Council (Uniswap)
+          address: "0x92827223f6b397CE9F208eE352bacA710765cACb"
+        - name: OP Security Council (OP Labs)
+          address: "0x7ed8d9Af9eaA194D1A75C67c1475579E42289E39"
+
+  - id: arbitrum-one
+    name: Arbitrum One
+    type: L2
+    family: arbitrum
+    rpc_urls:
+      - https://arb1.arbitrum.io/rpc
+    offchain_sources:
+      forum: https://forum.arbitrum.foundation/
+      dao_votes: https://www.tally.xyz/gov/arbitrum
+      releases:
+        - https://github.com/OffchainLabs/nitro/releases
+    onchain_watch:
+      timelocks:
+        - name: Arbitrum DAO Timelock
+          address: "0xA3d1a8DEB97B111454B294E2324EfAD13a9d8396"
+      safes:
+        - name: Arbitrum Security Council
+          address: "0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641"
+
+  - id: avalanche-c
+    name: Avalanche C-Chain
+    type: L1
+    family: avalanche
+    rpc_urls:
+      - https://api.avax.network/ext/bc/C/rpc
+    offchain_sources:
+      releases:
+        - https://github.com/ava-labs/avalanchego/releases
+      blog: https://medium.com/avalancheavax
+    onchain_watch:
+      timelocks: []
+      safes: []

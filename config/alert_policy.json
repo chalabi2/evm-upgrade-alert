@@ -1,0 +1,12 @@
+{
+  "policy_version": 1,
+  "milestones": [
+    {"stage":"vote_passed","notify":true},
+    {"stage":"scheduled","notify":true},
+    {"stage":"queued","notify":true},
+    {"stage":"T-24h","notify":true},
+    {"stage":"executed","notify":true}
+  ],
+  "quiet_hours_utc": null,
+  "throttle_seconds": 900
+}

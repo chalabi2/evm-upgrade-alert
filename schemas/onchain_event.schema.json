@@ -1,0 +1,14 @@
+{
+  "$id": "onchainEvent",
+  "type": "object",
+  "required": ["chain_id","address","event_name","tx_hash","block_number","occurred_at"],
+  "properties": {
+    "chain_id": { "type": "string" },
+    "address": { "type": "string" },
+    "event_name": { "type": "string" },
+    "tx_hash": { "type": "string" },
+    "block_number": { "type": "integer" },
+    "args": { "type": "object" },
+    "occurred_at": { "type": "string", "format": "date-time" }
+  }
+}

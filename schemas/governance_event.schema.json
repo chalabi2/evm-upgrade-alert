@@ -1,0 +1,20 @@
+{
+  "$id": "govEvent",
+  "type": "object",
+  "required": ["chain_id", "stage", "source_kind", "occurred_at"],
+  "properties": {
+    "chain_id": { "type": "string" },
+    "stage": {
+      "type": "string",
+      "enum": ["rumor","proposal","vote_open","vote_passed","release_posted","scheduled","queued","executed","canceled"]
+    },
+    "source_kind": {
+      "type": "string",
+      "enum": ["forum","release","roadmap","ef_blog","github","timelock","safe","governor"]
+    },
+    "source_ref": { "type": "string" },
+    "title": { "type": "string" },
+    "details": { "type": "object" },
+    "occurred_at": { "type": "string", "format": "date-time" }
+  }
+}

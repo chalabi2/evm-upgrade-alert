@@ -1,0 +1,16 @@
+{
+  "$id": "releaseAnnouncement",
+  "type": "object",
+  "required": ["chain_id", "fork_name", "published_at"],
+  "properties": {
+    "chain_id": { "type": "string" },
+    "fork_name": { "type": "string" },
+    "repo": { "type": "string" },
+    "tag": { "type": "string" },
+    "url": { "type": "string" },
+    "activation_epoch": { "type": ["integer","null"] },
+    "activation_ts": { "type": ["string","null"], "format": "date-time" },
+    "published_at": { "type": "string", "format": "date-time" },
+    "raw": { "type": "object" }
+  }
+}

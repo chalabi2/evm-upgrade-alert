@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: evm_upgrades
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_password_here
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    command: sh -c "bun run build && bun start"
+    environment:
+      DATABASE_URL: postgresql://postgres:your_password_here@postgres:5432/evm_upgrades
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  scheduler:
+    build: .
+    command: bun run scheduler
+    environment:
+      DATABASE_URL: postgresql://postgres:your_password_here@postgres:5432/evm_upgrades
+      TZ: ${TZ:-America/Los_Angeles}
+      SCRAPE_TIME: ${SCRAPE_TIME:-7}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  indexer:
+    build: .
+    command: bun run start-indexer -- op-mainnet arbitrum-one base-mainnet
+    environment:
+      DATABASE_URL: postgresql://postgres:your_password_here@postgres:5432/evm_upgrades
+      ETH_MAINNET_RPC_URL: ${ETH_MAINNET_RPC_URL}
+      OP_MAINNET_RPC_URL: ${OP_MAINNET_RPC_URL}
+      ARBITRUM_ONE_RPC_URL: ${ARBITRUM_ONE_RPC_URL}
+      BASE_MAINNET_RPC_URL: ${BASE_MAINNET_RPC_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
