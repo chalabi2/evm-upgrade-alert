@@ -41,8 +41,16 @@ export class UpgradeMonitor {
       console.error('[Off-Chain] ✗ GitHub scrape failed:', error);
     }
 
+    // Optimism governance forum (affects OP Stack chains: Optimism, Base, etc)
+    try {
+      const { scrapeOptimismForum } = await import('../scrapers/optimismForum.js');
+      await scrapeOptimismForum();
+      console.log('[Off-Chain] ✓ Optimism forum scraped');
+    } catch (error) {
+      console.error('[Off-Chain] ✗ Optimism forum scrape failed:', error);
+    }
+
     // TODO: Add more scrapers
-    // - Optimism governance forum
     // - Arbitrum forum
     // - Avalanche blog
     
@@ -164,16 +172,6 @@ export class UpgradeMonitor {
     
     const pool = getPool();
     
-    // Get countdown data to check if upgrade is in the future
-    const countdownData = await pool.query(`
-      SELECT chain_id, target_ts FROM countdowns
-    `);
-    const futureChains = new Set(
-      countdownData.rows
-        .filter(r => new Date(r.target_ts) > new Date())
-        .map(r => r.chain_id)
-    );
-    
     // Get all active upgrades:
     // 1. Scheduled/queued with future dates
     // 2. Release posts (don't need countdowns)
@@ -188,6 +186,7 @@ export class UpgradeMonitor {
         up.activation_ts,
         up.confidence,
         up.source_summary,
+        up.details,
         up.last_updated_at
       FROM upgrade_plans up
       JOIN chains c ON c.id = up.chain_id
@@ -207,10 +206,18 @@ export class UpgradeMonitor {
     console.log(`[Alerts] Found ${result.rows.length} upgrade(s) to check`);
 
     for (const upgrade of result.rows) {
-      // For scheduled/queued upgrades, skip if past
-      if (upgrade.status !== 'release_posted' && !futureChains.has(upgrade.chain_id)) {
-        console.log(`[Alerts] ⊘ Skipping ${upgrade.chain_name} - ${upgrade.fork_name} (past upgrade)`);
-        continue;
+      // For scheduled/queued upgrades, skip if activation_ts is in the past
+      if (upgrade.status !== 'release_posted' && upgrade.activation_ts) {
+        const activationDate = new Date(upgrade.activation_ts);
+        if (activationDate < new Date()) {
+          console.log(`[Alerts] ⊘ Skipping ${upgrade.chain_name} - ${upgrade.fork_name} (past upgrade: ${activationDate.toISOString()})`);
+          continue;
+        }
+      }
+      
+      // For scheduled/queued without activation_ts, still send alert (might be announced but date TBD)
+      if (upgrade.status !== 'release_posted' && !upgrade.activation_ts) {
+        console.log(`[Alerts] → ${upgrade.chain_name} - ${upgrade.fork_name} (scheduled, date TBD)`);
       }
       
       const key = `${upgrade.chain_id}-${upgrade.fork_name}-${upgrade.status}`;
@@ -244,7 +251,7 @@ export class UpgradeMonitor {
     );
     const countdown = countdownResult.rows[0];
 
-    // Build alert
+    // Build alert with rich details from LLM extraction
     const alert = {
       chain_id: upgrade.chain_id,
       chain_name: upgrade.chain_name,
@@ -258,7 +265,19 @@ export class UpgradeMonitor {
       window_high_ts: countdown?.window_high_ts?.toISOString() || null,
       confidence: parseFloat(upgrade.confidence),
       links: this.getLinks(upgrade.chain_id),
-      details: { source: upgrade.source_summary }
+      details: {
+        source: upgrade.source_summary,
+        // Merge in all the rich LLM-extracted data
+        ...(upgrade.details || {}),
+        // Add unix timestamp if available for countdown calculation
+        unixTimestamp: upgrade.details?.unixTimestamp || null,
+        timeline: upgrade.details?.timeline || null,
+        keyPoints: upgrade.details?.keyPoints || [],
+        requirements: upgrade.details?.requirements || [],
+        risks: upgrade.details?.risks || [],
+        technicalDetails: upgrade.details?.technicalDetails || {},
+        stakeholders: upgrade.details?.stakeholders || {}
+      }
     };
 
     // Get channels

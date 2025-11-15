@@ -19,9 +19,74 @@ export class DiscordAdapter implements NotificationAdapter {
     
     const fields: Array<{ name: string; value: string; inline?: boolean }> = [];
 
-    // Activation time (most important - show first)
+    // Check for multiple dates from timeline
+    const timeline = alert.details?.timeline;
+    const upgradeDate = timeline?.upgradeDate ? new Date(timeline.upgradeDate) : null;
+    const mainnetActivation = timeline?.mainnetActivation ? new Date(timeline.mainnetActivation) : null;
+    
+    // Primary activation timestamp (for countdown)
+    // Try multiple sources: target_ts (countdown), activation_ts (upgrade_plans), unixTimestamp (details)
+    let activationTimestamp: number | null = null;
+    
     if (alert.target_ts) {
-      const targetDate = new Date(alert.target_ts);
+      activationTimestamp = Math.floor(new Date(alert.target_ts).getTime() / 1000);
+    } else if (alert.activation_ts) {
+      activationTimestamp = Math.floor(new Date(alert.activation_ts).getTime() / 1000);
+    } else if (alert.details?.unixTimestamp) {
+      activationTimestamp = alert.details.unixTimestamp;
+    }
+    
+    // Show upgrade date if different from activation
+    if (upgradeDate && !isNaN(upgradeDate.getTime())) {
+      const upgradeTs = Math.floor(upgradeDate.getTime() / 1000);
+      const now = Date.now();
+      const diff = upgradeDate.getTime() - now;
+      
+      if (diff > 0) {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        fields.push({
+          name: '⏰ Time Until Upgrade',
+          value: days > 0 ? `**${days} days, ${hours} hours**` : `**${hours} hours**`,
+          inline: false
+        });
+      }
+      
+      fields.push({
+        name: '🔧 Upgrade Date',
+        value: `<t:${upgradeTs}:F> (<t:${upgradeTs}:R>)`,
+        inline: false
+      });
+    }
+    
+    // Show mainnet activation if available and different from upgrade date
+    if (mainnetActivation && !isNaN(mainnetActivation.getTime())) {
+      const activationTs = Math.floor(mainnetActivation.getTime() / 1000);
+      
+      // Only show countdown if this is the primary/later date
+      if (!upgradeDate || mainnetActivation > upgradeDate) {
+        const now = Date.now();
+        const diff = mainnetActivation.getTime() - now;
+        
+        if (diff > 0 && !upgradeDate) {
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          fields.push({
+            name: '⏰ Time Until Activation',
+            value: days > 0 ? `**${days} days, ${hours} hours**` : `**${hours} hours**`,
+            inline: false
+          });
+        }
+      }
+      
+      fields.push({
+        name: '📅 Mainnet Activation',
+        value: `<t:${activationTs}:F> (<t:${activationTs}:R>)`,
+        inline: false
+      });
+    } else if (activationTimestamp && !upgradeDate) {
+      // Fallback to generic activation time if no timeline data
+      const targetDate = new Date(activationTimestamp * 1000);
       const now = Date.now();
       const diff = targetDate.getTime() - now;
       
@@ -29,15 +94,15 @@ export class DiscordAdapter implements NotificationAdapter {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         fields.push({
-          name: 'Time Remaining',
+          name: '⏰ Time Remaining',
           value: days > 0 ? `**${days} days, ${hours} hours**` : `**${hours} hours**`,
           inline: false
         });
       }
       
       fields.push({
-        name: 'Activation Time',
-        value: `<t:${Math.floor(targetDate.getTime() / 1000)}:F>`,
+        name: '📅 Activation Time',
+        value: `<t:${activationTimestamp}:F> (<t:${activationTimestamp}:R>)`,
         inline: false
       });
     }

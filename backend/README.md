@@ -244,6 +244,62 @@ import { timestampCountdown } from "./src/contracts/countdown.js";
 const countdown = timestampCountdown(targetUnix, jitterSeconds);
 ```
 
+## LLM-Powered Content Extraction
+
+The system uses a local LLM to **comprehensively extract ALL important data** from governance forum posts, not just descriptions.
+
+### What Gets Extracted
+
+The LLM extracts structured data including:
+
+- **Basic Info**: Title, fork name, concise description, status
+- **Timeline**: All dates (proposal, voting, testnet, mainnet activation)
+- **Technical Details**:
+  - Features being added
+  - EIP numbers (e.g., EIP-7594, EIP-7892)
+  - Breaking changes
+  - Dependencies (software versions, other upgrades)
+- **Stakeholders**:
+  - Proposer
+  - Reviewers/approvers
+  - Impacted parties (node operators, users, developers)
+- **Requirements**: Specific actions operators/users must take
+- **Risks**: Security concerns or risks mentioned
+- **Links**: Specifications, documentation, GitHub PRs, audit reports
+- **Activation**: Unix timestamps for precise countdown timers
+
+### Example Extracted Data
+
+From Optimism's Jovian/Fusaka proposal, the LLM extracted:
+
+- 5 key features
+- 3 EIP numbers
+- 4 technical dependencies
+- Breaking changes details
+- 5 reviewers
+- 3 impacted stakeholder groups
+- 3 specific requirements
+- 2 identified risks
+- 8 specification/documentation links
+
+All this data is stored in the `details` JSONB column and used for rich notifications.
+
+### Configuration
+
+Configure your LLM endpoint in `.env`:
+
+```bash
+LLM_ENDPOINT=http://192.168.0.103:1234/v1/chat/completions
+```
+
+The LLM must support OpenAI-compatible chat completions API. Tested with:
+
+- **LM Studio** (recommended)
+- **Ollama** (with OpenAI compatibility)
+- **LocalAI**
+
+If the LLM is unavailable, the system automatically falls back to regex-based extraction.
+
 ## RPC Configuration
 
 Default public RPCs are configured in `registry/chains.yaml`. Override with environment variables:
@@ -573,3 +629,16 @@ bun run import-registry
 ## License
 
 MIT
+
+## API Documentation
+
+Complete API documentation for building frontends is available in [API.md](./API.md).
+
+The API provides endpoints for:
+- Fetching all upgrades with filtering
+- Getting countdowns for specific chains
+- Monitoring on-chain events
+- Tracking client releases
+- Health checks
+
+See [API.md](./API.md) for detailed endpoint documentation, request/response examples, and frontend integration tips.

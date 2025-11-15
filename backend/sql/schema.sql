@@ -60,11 +60,12 @@ CREATE TABLE IF NOT EXISTS upgrade_plans (
   id              BIGSERIAL PRIMARY KEY,
   chain_id        TEXT REFERENCES chains(id) ON DELETE CASCADE,
   fork_name       TEXT NOT NULL,
-  status          TEXT NOT NULL CHECK (status IN ('proposed','approved','scheduled','queued','executed','canceled')),
+  status          TEXT NOT NULL CHECK (status IN ('proposed','approved','scheduled','queued','executed','canceled','release_posted','announced')),
   activation_epoch BIGINT,
   activation_ts   TIMESTAMPTZ,
   confidence      NUMERIC(3,2) NOT NULL DEFAULT 0.50,
   source_summary  TEXT,
+  details         JSONB,  -- Comprehensive LLM-extracted data: keyPoints, technicalDetails, timeline, links, stakeholders, risks, requirements
   last_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(chain_id, fork_name)
 );
