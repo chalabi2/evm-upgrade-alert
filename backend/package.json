@@ -5,15 +5,15 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js",
-    "dev": "node --loader ts-node/esm src/server.ts",
-    "import-registry": "node --loader ts-node/esm src/cli/import-registry.ts",
-    "test-notifications": "node --loader ts-node/esm src/cli/test-notifications.ts",
-    "start-indexer": "node --loader ts-node/esm src/cli/start-indexer.ts",
-    "scan-historical": "node --loader ts-node/esm src/cli/scan-historical.ts",
-    "monitor": "node --loader ts-node/esm src/cli/monitor.ts",
-    "scheduler": "node --loader ts-node/esm src/cli/scheduler.ts",
-    "clear-data": "node --loader ts-node/esm src/cli/clear-data.ts"
+    "start": "bun run src/server.ts",
+    "dev": "bun run src/server.ts",
+    "import-registry": "bun run src/cli/import-registry.ts",
+    "test-notifications": "bun run src/cli/test-notifications.ts",
+    "start-indexer": "bun run src/cli/start-indexer.ts",
+    "scan-historical": "bun run src/cli/scan-historical.ts",
+    "monitor": "bun run src/cli/monitor.ts",
+    "scheduler": "bun run src/cli/scheduler.ts",
+    "clear-data": "bun run src/cli/clear-data.ts"
   },
   "dependencies": {
     "axios": "^1.13.0",

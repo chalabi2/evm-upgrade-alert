@@ -123,11 +123,8 @@ export class IndexerManager {
 
   private async getStartingBlock(chainId: string): Promise<number> {
     // TODO: Load last processed block from DB
-    // For now, start from recent blocks (last 1000 blocks)
-    const recentBlockOffset = 1000;
-    
-    // Could query the RPC for current block and subtract
-    // For simplicity, return a reasonable default
-    return Math.max(0, Date.now() / 1000 - 86400) as number; // ~24h ago in block time
+    // For now, start from recent blocks (approximately last 1000 blocks)
+    // Using 0 as fallback to start from genesis if needed
+    return 0;
   }
 }
