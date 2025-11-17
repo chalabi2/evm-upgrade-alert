@@ -2,6 +2,7 @@ import { getPool } from './db.js';
 
 export type Chain = {
   id: string;
+  chain_id?: number | null;
   name: string;
   type: 'L1' | 'L2' | 'testnet';
   family: string;
@@ -29,9 +30,10 @@ export type WatchAddress = {
 export async function upsertChain(chain: Chain): Promise<void> {
   const pool = getPool();
   const sql = `
-    INSERT INTO chains (id, name, type, family, genesis_unix, slot_seconds, slots_per_epoch)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    INSERT INTO chains (id, chain_id, name, type, family, genesis_unix, slot_seconds, slots_per_epoch)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     ON CONFLICT (id) DO UPDATE SET
+      chain_id = EXCLUDED.chain_id,
       name = EXCLUDED.name,
       type = EXCLUDED.type,
       family = EXCLUDED.family,
@@ -41,6 +43,7 @@ export async function upsertChain(chain: Chain): Promise<void> {
   `;
   await pool.query(sql, [
     chain.id,
+    chain.chain_id,
     chain.name,
     chain.type,
     chain.family,

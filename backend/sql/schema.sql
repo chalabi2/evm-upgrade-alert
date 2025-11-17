@@ -1,6 +1,7 @@
 -- chains & static registry
 CREATE TABLE IF NOT EXISTS chains (
   id              TEXT PRIMARY KEY,
+  chain_id        INTEGER UNIQUE,
   name            TEXT NOT NULL,
   type            TEXT NOT NULL CHECK (type IN ('L1','L2','testnet')),
   family          TEXT NOT NULL,
@@ -97,6 +98,7 @@ CREATE TABLE IF NOT EXISTS alert_subscriptions (
   chain_id              TEXT REFERENCES chains(id) ON DELETE CASCADE,
   fork_filter           TEXT,
   stages                TEXT[] NOT NULL,
+  alert_types           TEXT[] NOT NULL DEFAULT ARRAY['upgrades'],
   channels              TEXT[] NOT NULL,
   webhook_url           TEXT,
   email                 TEXT,

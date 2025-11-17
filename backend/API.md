@@ -332,20 +332,23 @@ GET /v1/releases?chain=eth-mainnet&limit=10
 
 ### POST /v1/alerts/subscribe
 
-Subscribe to upgrade alerts (placeholder endpoint).
+Create or update an alert subscription. Webhooks, bot tokens, and chat IDs are
+encrypted at rest using `ALERT_SECRET_KEY` and are only decrypted during alert
+delivery.
 
 **Request Body:**
 
 ```json
 {
-  "user_id": "user123",
+  "user_id": "runbook-team",
   "chain_id": "eth-mainnet",
-  "fork_filter": "Fusaka",
-  "stages": ["scheduled", "queued"],
+  "fork_filter": "deneb",
+  "stages": ["scheduled", "executed"],
+  "alert_types": ["upgrades", "chain_events"],
   "channels": ["discord", "telegram"],
   "discord_webhook": "https://discord.com/api/webhooks/...",
-  "telegram_bot_token": "bot123:ABC...",
-  "telegram_chat_id": "-100123456789"
+  "telegram_bot_token": "12345:ABCDEF",
+  "telegram_chat_id": "-1001234567"
 }
 ```
 
@@ -354,11 +357,21 @@ Subscribe to upgrade alerts (placeholder endpoint).
 ```json
 {
   "status": "accepted",
-  "subscription": { ... }
+  "subscription": {
+    "id": 42,
+    "user_id": "runbook-team",
+    "chain_id": "eth-mainnet",
+    "fork_filter": "deneb",
+    "stages": ["scheduled", "executed"],
+    "alert_types": ["upgrades", "chain_events"],
+    "channels": ["discord", "telegram"],
+    "created_at": "2025-11-17T20:00:00.000Z"
+  }
 }
 ```
 
-**Note:** This endpoint currently returns a 202 Accepted but doesn't persist subscriptions. Full implementation coming soon.
+Supported channels: `discord`, `slack`, `telegram`. Supported `alert_types`:
+`upgrades`, `chain_events`, `releases`.
 
 ---
 

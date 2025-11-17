@@ -14,6 +14,7 @@ export type ChainFamily = 'ethereum' | 'op-stack' | 'arbitrum' | 'avalanche';
 
 export interface Chain {
   id: string;
+  chain_id: number | null;
   name: string;
   type: ChainType;
   family: ChainFamily;
@@ -94,6 +95,38 @@ export interface Release {
   activation_ts: string | null;
   raw_json: Record<string, unknown>;
   published_at: string;
+}
+
+export type NotificationChannel = 'discord' | 'slack' | 'telegram';
+export type AlertTopic = 'upgrades' | 'chain_events' | 'releases';
+
+export interface AlertSubscriptionRequest {
+  user_id?: string;
+  chain_id?: string;
+  fork_filter?: string;
+  stages?: UpgradeStatus[];
+  alert_types?: AlertTopic[];
+  channels: NotificationChannel[];
+  discord_webhook?: string;
+  slack_webhook?: string;
+  telegram_bot_token?: string;
+  telegram_chat_id?: string;
+}
+
+export interface AlertSubscription {
+  id: number;
+  user_id: string;
+  chain_id: string | null;
+  fork_filter: string | null;
+  stages: UpgradeStatus[];
+  alert_types: AlertTopic[];
+  channels: NotificationChannel[];
+  created_at: string;
+}
+
+export interface AlertSubscriptionResponse {
+  status: string;
+  subscription: AlertSubscription;
 }
 
 export interface HealthResponse {

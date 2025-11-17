@@ -5,8 +5,8 @@ export function Layout() {
   return (
     <div className="relative flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1 flex justify-center px-6">
-        <div className="container py-6 max-w-7xl">
+      <main className="flex flex-1 items-center justify-center px-6">
+        <div className="container max-w-7xl py-10">
           <Outlet />
         </div>
       </main>

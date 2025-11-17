@@ -6,12 +6,14 @@ import type {
   Release,
   HealthResponse,
   UpgradeStatus,
+  AlertSubscriptionRequest,
+  AlertSubscriptionResponse,
 } from '@/types/api';
 
 const API_BASE_URL = '/';
 
-async function fetchAPI<T>(endpoint: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`);
+async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
   if (!response.ok) {
     throw new Error(`API Error: ${response.statusText}`);
   }
@@ -59,6 +61,16 @@ export const api = {
       const query = searchParams.toString();
       return fetchAPI<Release[]>(`v1/releases${query ? `?${query}` : ''}`);
     },
+  },
+  alerts: {
+    subscribe: (payload: AlertSubscriptionRequest) =>
+      fetchAPI<AlertSubscriptionResponse>('v1/alerts/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      }),
   },
 };
 

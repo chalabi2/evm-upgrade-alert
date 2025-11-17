@@ -54,6 +54,7 @@ DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 TELEGRAM_BOT_TOKEN=123456789:ABC...
 TELEGRAM_CHAT_ID=-1001234567890
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+ALERT_SECRET_KEY=replace-this-with-a-32-byte-secret
 
 # Optional: GitHub token for higher API rate limits (60 -> 5000 requests/hour)
 # Create at: https://github.com/settings/tokens (needs public_repo scope)
@@ -192,11 +193,16 @@ curl -X POST http://localhost:3000/v1/alerts/subscribe \
   -d '{
     "user_id": "user@example.com",
     "chain_id": "eth-mainnet",
-    "stages": ["scheduled", "T-24h", "executed"],
+    "stages": ["scheduled", "executed"],
+    "alert_types": ["upgrades", "chain_events"],
     "channels": ["discord"],
     "discord_webhook": "https://discord.com/api/webhooks/..."
   }'
 ```
+
+All webhook URLs, bot tokens, and chat IDs are encrypted with AES-256-GCM
+using `ALERT_SECRET_KEY` before being stored and are only decrypted while
+dispatching alerts.
 
 ## Testing Notifications
 

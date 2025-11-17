@@ -3,6 +3,7 @@ import { DiscordAdapter } from './discord.js';
 import { TelegramAdapter } from './telegram.js';
 import { SlackAdapter } from './slack.js';
 import axios from 'axios';
+import { decryptSecret } from '../lib/crypto.js';
 
 export class NotificationDispatcher {
   async dispatch(
@@ -86,23 +87,28 @@ export function configFromSubscription(subscription: {
 }): NotificationConfig {
   const config: NotificationConfig = {};
 
-  if (subscription.discord_webhook) {
-    config.discord = { webhook_url: subscription.discord_webhook };
+  const discordWebhook = decryptSecret(subscription.discord_webhook);
+  if (discordWebhook) {
+    config.discord = { webhook_url: discordWebhook };
   }
 
-  if (subscription.telegram_bot_token && subscription.telegram_chat_id) {
+  const telegramBotToken = decryptSecret(subscription.telegram_bot_token);
+  const telegramChatId = decryptSecret(subscription.telegram_chat_id);
+  if (telegramBotToken && telegramChatId) {
     config.telegram = {
-      bot_token: subscription.telegram_bot_token,
-      chat_id: subscription.telegram_chat_id
+      bot_token: telegramBotToken,
+      chat_id: telegramChatId
     };
   }
 
-  if (subscription.slack_webhook) {
-    config.slack = { webhook_url: subscription.slack_webhook };
+  const slackWebhook = decryptSecret(subscription.slack_webhook);
+  if (slackWebhook) {
+    config.slack = { webhook_url: slackWebhook };
   }
 
-  if (subscription.webhook_url) {
-    config.webhook = { url: subscription.webhook_url };
+  const webhookUrl = decryptSecret(subscription.webhook_url);
+  if (webhookUrl) {
+    config.webhook = { url: webhookUrl };
   }
 
   return config;

@@ -1,6 +1,6 @@
 import { scrapeEthereumBlog } from '../scrapers/ethereumBlog.js';
 import { getPool } from '../lib/db.js';
-import { NotificationDispatcher } from '../notifications/index.js';
+import { NotificationDispatcher, configFromSubscription } from '../notifications/index.js';
 import type { GovEventInput, OnchainEventInput } from './normalizers.js';
 
 export class UpgradeMonitor {
@@ -279,6 +279,53 @@ export class UpgradeMonitor {
         stakeholders: upgrade.details?.stakeholders || {}
       }
     };
+
+    const subscriberResult = await pool.query(
+      `SELECT *
+       FROM alert_subscriptions
+       WHERE chain_id IS NULL OR chain_id = $1`,
+      [upgrade.chain_id]
+    );
+
+    for (const subscription of subscriberResult.rows) {
+      const subscriptionStages: string[] = subscription.stages || [];
+      const subscriptionAlertTypes: string[] = subscription.alert_types || ['upgrades'];
+      const matchesStage =
+        subscriptionStages.length === 0 ||
+        subscriptionStages.includes(upgrade.status);
+      const matchesFork =
+        !subscription.fork_filter ||
+        upgrade.fork_name
+          .toLowerCase()
+          .includes(subscription.fork_filter.toLowerCase());
+      const matchesType =
+        subscriptionAlertTypes.length === 0 ||
+        subscriptionAlertTypes.includes('upgrades');
+
+      if (!matchesStage || !matchesFork || !matchesType) {
+        continue;
+      }
+
+      const channels: string[] = (subscription.channels || []).filter(Boolean);
+      if (channels.length === 0) {
+        continue;
+      }
+
+      const config = configFromSubscription(subscription);
+
+      try {
+        const results = await this.dispatcher.dispatch(alert, channels as any, config);
+        for (const r of results) {
+          console.log(
+            `[Alerts]   ${subscription.user_id} ${r.success ? '✓' : '✗'} ${
+              r.channel
+            }${r.error ? ': ' + r.error : ''}`
+          );
+        }
+      } catch (error) {
+        console.error(`[Alerts]   ✗ Failed subscription ${subscription.user_id}`, error);
+      }
+    }
 
     // Get channels
     const channels: any[] = [];

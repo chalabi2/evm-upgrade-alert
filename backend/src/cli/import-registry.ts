@@ -7,6 +7,7 @@ import { closePool } from '../lib/db.js';
 
 type RegistryChain = {
   id: string;
+  chain_id?: number;
   name: string;
   type: 'L1' | 'L2' | 'testnet';
   family: string;
@@ -36,6 +37,7 @@ async function main() {
   for (const chain of registry.chains) {
     await upsertChain({
       id: chain.id,
+      chain_id: chain.chain_id,
       name: chain.name,
       type: chain.type,
       family: chain.family,
@@ -43,7 +45,7 @@ async function main() {
       slot_seconds: chain.slot_seconds,
       slots_per_epoch: chain.slots_per_epoch
     });
-    console.log(`  ✓ Chain: ${chain.id}`);
+    console.log(`  ✓ Chain: ${chain.id} (chain_id: ${chain.chain_id || 'none'})`);
 
     if (chain.offchain_sources) {
       for (const [kind, urlOrUrls] of Object.entries(chain.offchain_sources)) {

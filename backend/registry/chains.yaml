@@ -1,6 +1,7 @@
 version: 1
 chains:
   - id: eth-mainnet
+    chain_id: 1
     name: Ethereum Mainnet
     type: L1
     family: ethereum
@@ -26,6 +27,7 @@ chains:
       safes: []
 
   - id: eth-sepolia
+    chain_id: 11155111
     name: Ethereum Sepolia
     type: testnet
     family: ethereum
@@ -44,6 +46,7 @@ chains:
       safes: []
 
   - id: base-mainnet
+    chain_id: 8453
     name: Base
     type: L2
     family: op-stack
@@ -65,6 +68,7 @@ chains:
           address: "0x0aA384EB2fedD2741277A0f72909A0d7275575D7"
 
   - id: op-mainnet
+    chain_id: 10
     name: Optimism Mainnet
     type: L2
     family: op-stack
@@ -88,6 +92,7 @@ chains:
           address: "0x7ed8d9Af9eaA194D1A75C67c1475579E42289E39"
 
   - id: arbitrum-one
+    chain_id: 42161
     name: Arbitrum One
     type: L2
     family: arbitrum
@@ -107,6 +112,7 @@ chains:
           address: "0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641"
 
   - id: avalanche-c
+    chain_id: 43114
     name: Avalanche C-Chain
     type: L1
     family: avalanche
