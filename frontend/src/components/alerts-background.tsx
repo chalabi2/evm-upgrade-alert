@@ -1,11 +1,5 @@
 import { cn } from "@/lib/utils";
 
-const TARGETS = Array.from({ length: 6 }).map((_, index) => ({
-  id: index,
-  delay: index * 0.8,
-  size: 140 + index * 40,
-}));
-
 export function AlertsBackground({ className }: { className?: string }) {
   return (
     <div

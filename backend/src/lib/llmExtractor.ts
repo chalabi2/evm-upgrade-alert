@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-const LLM_ENDPOINT = process.env.LLM_ENDPOINT || 'http://192.168.0.103:1234/v1/chat/completions';
+const LLM_ENDPOINT = process.env.LLM_ENDPOINT;
 
-interface UpgradeExtraction {
+export interface UpgradeExtraction {
   title: string;
   forkName: string;
   description: string;
@@ -266,9 +266,9 @@ export async function extractUpgradeInfo(
     ].filter(Boolean).join('\n\n').slice(0, 8000);
 
     const response = await axios.post(
-      LLM_ENDPOINT,
+      LLM_ENDPOINT || '',
       {
-        model: 'gpt-4',
+        model: 'gpt-5-nano-2025-08-07',
         messages: [
           {
             role: 'system',
@@ -287,13 +287,14 @@ Respond ONLY with a valid JSON object matching this schema (no markdown, no expl
 ${JSON.stringify(EXTRACTION_SCHEMA, null, 2)}`
           }
         ],
-        temperature: 0.1
+        temperature: 1
       },
       {
         headers: {
+           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        timeout: 30000
+        timeout: 60000
       }
     );
 

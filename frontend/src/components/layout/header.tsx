@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Activity } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "../ui/mode-toggle";
 
@@ -8,7 +8,6 @@ const navigation = [
   { name: "Alerts", href: "/alerts" },
   { name: "Releases", href: "/releases" },
   { name: "Chains", href: "/chains" },
-  { name: "Events", href: "/events" },
 ];
 
 export function Header() {
@@ -22,7 +21,7 @@ export function Header() {
           alt="Upgradar"
           className="h-10 w-10 rounded-full"
         />
-        <span className="font-bold text-2xl">Upgradar</span>
+        <span className="font-bold text-2xl ">Upgradar</span>
       </Link>
 
       <nav className="flex items-center gap-6 text-md absolute left-1/2 -translate-x-1/2">

@@ -2,7 +2,7 @@ import { scrapeEthereumBlog } from '../scrapers/ethereumBlog.js';
 import { getPool } from '../lib/db.js';
 import { NotificationDispatcher, configFromSubscription } from '../notifications/index.js';
 import type { GovEventInput, OnchainEventInput } from './normalizers.js';
-
+import { epochCountdownWindow, timestampCountdown } from '../contracts/countdown.js';
 export class UpgradeMonitor {
   private lastCheckedUpgrades: Map<string, Date> = new Map();
   private sentAlerts: Set<string> = new Set(); // Track sent alerts to avoid duplicates
@@ -32,15 +32,6 @@ export class UpgradeMonitor {
       console.error('[Off-Chain] ✗ Ethereum scrape failed:', error);
     }
 
-    // GitHub releases for all major clients
-    try {
-      const { scrapeGitHubReleases } = await import('../scrapers/githubReleases.js');
-      await scrapeGitHubReleases();
-      console.log('[Off-Chain] ✓ GitHub releases scraped');
-    } catch (error) {
-      console.error('[Off-Chain] ✗ GitHub scrape failed:', error);
-    }
-
     // Optimism governance forum (affects OP Stack chains: Optimism, Base, etc)
     try {
       const { scrapeOptimismForum } = await import('../scrapers/optimismForum.js');
@@ -48,6 +39,15 @@ export class UpgradeMonitor {
       console.log('[Off-Chain] ✓ Optimism forum scraped');
     } catch (error) {
       console.error('[Off-Chain] ✗ Optimism forum scrape failed:', error);
+    }
+
+    // GitHub releases for all major clients (depends on latest upgrade context)
+    try {
+      const { scrapeGitHubReleases } = await import('../scrapers/githubReleases.js');
+      await scrapeGitHubReleases();
+      console.log('[Off-Chain] ✓ GitHub releases scraped');
+    } catch (error) {
+      console.error('[Off-Chain] ✗ GitHub scrape failed:', error);
     }
 
     // TODO: Add more scrapers
@@ -155,14 +155,39 @@ export class UpgradeMonitor {
       // Create countdown if we have activation time
       if (activationTs) {
         const targetUnix = Math.floor(activationTs.getTime() / 1000);
+        // Detect if the chain is epoch-based (has an activation_epoch) or  
+        // timestamp-based.  For now we treat any chain without an epoch as L2.
+        const isEpoch = !!event.activation_epoch;
+        let countdownWindow;
+        if (isEpoch) {
+          // Existing logic for epoch-based chains
+          countdownWindow = epochCountdownWindow({
+            genesisUnix: event.genesis_unix,
+            slotSeconds: event.slot_seconds,
+            slotsPerEpoch: event.slots_per_epoch,
+            activationEpoch: event.activation_epoch,
+          });
+        } else {
+          // Timestamp-based countdown (e.g. Jovian)
+          countdownWindow = timestampCountdown(targetUnix);
+        }
         await pool.query(`
-          INSERT INTO countdowns (chain_id, fork_name, target_ts, confidence)
-          VALUES ($1, $2, to_timestamp($3), 0.99)
+          INSERT INTO countdowns (chain_id, fork_name, target_ts, window_low_ts, window_high_ts, confidence)
+          VALUES ($1,$2,to_timestamp($3),to_timestamp($4),to_timestamp($5),$6)
           ON CONFLICT (chain_id) DO UPDATE SET
             fork_name = EXCLUDED.fork_name,
             target_ts = EXCLUDED.target_ts,
+            window_low_ts = EXCLUDED.window_low_ts,
+            window_high_ts = EXCLUDED.window_high_ts,
             confidence = EXCLUDED.confidence
-        `, [event.chain_id, forkName, targetUnix]);
+        `, [
+          event.chain_id,
+          forkName,
+          targetUnix,
+          countdownWindow.windowLowUnix,
+          countdownWindow.windowHighUnix,
+          0.99,
+        ]);
       }
     }
   }
@@ -283,7 +308,10 @@ export class UpgradeMonitor {
     const subscriberResult = await pool.query(
       `SELECT *
        FROM alert_subscriptions
-       WHERE chain_id IS NULL OR chain_id = $1`,
+       WHERE
+         (chain_id IS NULL AND COALESCE(array_length(chain_ids, 1), 0) = 0)
+         OR chain_id = $1
+         OR $1 = ANY(COALESCE(chain_ids, ARRAY[]::text[]))`,
       [upgrade.chain_id]
     );
 

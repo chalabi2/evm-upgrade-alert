@@ -103,6 +103,7 @@ export type AlertTopic = 'upgrades' | 'chain_events' | 'releases';
 export interface AlertSubscriptionRequest {
   user_id?: string;
   chain_id?: string;
+  chain_ids?: string[];
   fork_filter?: string;
   stages?: UpgradeStatus[];
   alert_types?: AlertTopic[];
@@ -117,6 +118,7 @@ export interface AlertSubscription {
   id: number;
   user_id: string;
   chain_id: string | null;
+  chain_ids: string[] | null;
   fork_filter: string | null;
   stages: UpgradeStatus[];
   alert_types: AlertTopic[];

@@ -41,6 +41,13 @@ The app will be available at `http://localhost:5173`
 bun run build
 ```
 
+## Deployment
+
+The repository root ships with a `vercel.json` that builds this Vite app and
+rewrites `/health` and `/v1/*` requests to the backend API. Connect the repo to
+Vercel and follow the environment variable checklist in `../DEPLOYMENT.md` to
+publish both the frontend and API on the same domain.
+
 ### Preview Production Build
 
 ```bash

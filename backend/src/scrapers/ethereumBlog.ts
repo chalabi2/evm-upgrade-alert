@@ -1,8 +1,44 @@
 import axios from 'axios';
 import Parser from 'rss-parser';
 import { getPool } from '../lib/db.js';
+import {
+  extractUpgradeInfo as llmExtractUpgradeInfo,
+  extractUpgradeInfoFallback,
+  type UpgradeExtraction
+} from '../lib/llmExtractor.js';
+import { shouldSkipUpgradeProcessing } from '../lib/upgradeCache.js';
 
 const parser = new Parser();
+
+type UpgradeStatus = UpgradeExtraction['status'];
+
+type StoredUpgradeDetails = {
+  keyPoints: string[];
+  affectedChains: string[];
+  technicalDetails: UpgradeExtraction['technicalDetails'];
+  timeline: UpgradeExtraction['timeline'];
+  links: UpgradeExtraction['links'];
+  stakeholders: UpgradeExtraction['stakeholders'];
+  risks: string[];
+  requirements: string[];
+  source: string;
+  extractedAt: string;
+  unixTimestamp: number | null;
+  llmExtracted: boolean;
+};
+
+interface UpgradeInfo {
+  forkName: string;
+  status: UpgradeStatus;
+  activationEpoch?: number;
+  activationTs: Date | null;
+  activationUnix?: number;
+  targetUnix?: number;
+  confidence: number;
+  sourceUrl: string;
+  sourceSummary: string;
+  details: StoredUpgradeDetails;
+}
 
 async function fetchBlogPostContent(url: string): Promise<string> {
   try {
@@ -14,17 +50,9 @@ async function fetchBlogPostContent(url: string): Promise<string> {
   }
 }
 
-type UpgradeInfo = {
-  forkName: string;
-  activationEpoch?: number;
-  activationTimestamp?: number;
-  confidence: number;
-  sourceUrl: string;
-  publishedAt: Date;
-};
-
 export async function scrapeEthereumBlog(): Promise<void> {
   console.log('Scraping Ethereum blog RSS feed...');
+  const chainId = 'eth-mainnet';
   
   const feed = await parser.parseURL('https://blog.ethereum.org/feed.xml');
   console.log(`Found ${feed.items.length} recent posts`);
@@ -62,6 +90,11 @@ export async function scrapeEthereumBlog(): Promise<void> {
     
     const forkName = forkNameMatch[1].charAt(0).toUpperCase() + forkNameMatch[1].slice(1).toLowerCase();
     console.log(`  Fork: ${forkName}`);
+
+    if (await shouldSkipUpgradeProcessing(chainId, forkName, { requireCountdown: true })) {
+      console.log('  Existing alert + LLM details detected, skipping reprocessing.');
+      continue;
+    }
     
     // Fetch full blog post HTML for better parsing
     let blogHtml = '';
@@ -117,14 +150,106 @@ export async function scrapeEthereumBlog(): Promise<void> {
       console.log('  No activation time found');
       continue;
     }
-    
+
+    const sourceUrl = item.link || 'https://blog.ethereum.org';
+
+    let llmExtraction: UpgradeExtraction | null = null;
+    let llmExtracted = false;
+    if (blogHtml) {
+      console.log('  Extracting structured details with LLM...');
+      llmExtraction = await llmExtractUpgradeInfo(item.title || forkName, blogHtml);
+      llmExtracted = !!llmExtraction;
+    }
+
+    if (!llmExtraction) {
+      console.log('  LLM extraction unavailable, using fallback heuristics');
+    }
+
+    const fallbackData = extractUpgradeInfoFallback(
+      item.title || forkName,
+      blogHtml || item.content || item.contentSnippet || ''
+    );
+
+    const derivedUnix = typeof activationTimestamp === 'number' ? activationTimestamp : undefined;
+    const activationUnix = llmExtraction?.unixTimestamp ?? derivedUnix ?? null;
+
+    let activationTs: Date | null = null;
+
+    if (llmExtraction?.unixTimestamp) {
+      activationTs = new Date(llmExtraction.unixTimestamp * 1000);
+    } else {
+      const timelineCandidates = [
+        llmExtraction?.activationDate,
+        llmExtraction?.timeline?.mainnetActivation,
+        llmExtraction?.timeline?.upgradeDate
+      ];
+
+      for (const candidate of timelineCandidates) {
+        if (!candidate) continue;
+        const parsed = new Date(candidate);
+        if (!Number.isNaN(parsed.getTime())) {
+          activationTs = parsed;
+          break;
+        }
+      }
+    }
+
+    if (!activationTs && derivedUnix) {
+      const parsed = new Date(derivedUnix * 1000);
+      activationTs = Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    const fallbackStatus = fallbackData.status;
+    const normalizedFallbackStatus =
+      fallbackStatus === 'scheduled' || fallbackStatus === 'proposed' ? fallbackStatus : undefined;
+
+    const status: UpgradeStatus =
+      llmExtraction?.status ||
+      normalizedFallbackStatus ||
+      ((activationEpoch || activationUnix) ? 'scheduled' : 'proposed');
+
+    const sourceSummary =
+      llmExtraction?.description ||
+      fallbackData.description ||
+      `${forkName} upgrade - Source: ${sourceUrl}`;
+
+    let targetUnix: number | undefined;
+    if (activationEpoch) {
+      targetUnix = 1606824023 + (activationEpoch * 32 * 12);
+    } else if (activationUnix) {
+      targetUnix = activationUnix;
+    } else if (activationTs) {
+      targetUnix = Math.floor(activationTs.getTime() / 1000);
+    }
+
+    const normalizedActivationTs = targetUnix ? new Date(targetUnix * 1000) : activationTs || null;
+
+    const details: StoredUpgradeDetails = {
+      keyPoints: llmExtraction?.keyPoints ?? fallbackData.keyPoints ?? [],
+      affectedChains: llmExtraction?.affectedChains ?? fallbackData.affectedChains ?? ['Ethereum'],
+      technicalDetails: llmExtraction?.technicalDetails ?? ({} as UpgradeExtraction['technicalDetails']),
+      timeline: llmExtraction?.timeline ?? ({} as UpgradeExtraction['timeline']),
+      links: llmExtraction?.links ?? ({} as UpgradeExtraction['links']),
+      stakeholders: llmExtraction?.stakeholders ?? ({} as UpgradeExtraction['stakeholders']),
+      risks: llmExtraction?.risks ?? [],
+      requirements: llmExtraction?.requirements ?? [],
+      source: sourceUrl,
+      extractedAt: new Date().toISOString(),
+      unixTimestamp: llmExtraction?.unixTimestamp ?? fallbackData.unixTimestamp ?? targetUnix ?? null,
+      llmExtracted
+    };
+
     upgrades.push({
       forkName,
+      status,
       activationEpoch,
-      activationTimestamp,
+      activationTs: normalizedActivationTs,
+      activationUnix: activationUnix ?? undefined,
+      targetUnix,
       confidence: 0.95,
-      sourceUrl: item.link || 'https://blog.ethereum.org',
-      publishedAt: new Date(item.pubDate || Date.now())
+      sourceUrl,
+      sourceSummary,
+      details
     });
   }
   
@@ -140,36 +265,42 @@ export async function scrapeEthereumBlog(): Promise<void> {
   for (const upgrade of upgrades) {
     // Insert upgrade plan
     await pool.query(`
-      INSERT INTO upgrade_plans (chain_id, fork_name, status, activation_epoch, activation_ts, confidence, source_summary, last_updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      INSERT INTO upgrade_plans (chain_id, fork_name, status, activation_epoch, activation_ts, confidence, source_summary, details, last_updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
       ON CONFLICT (chain_id, fork_name) DO UPDATE SET
         status = EXCLUDED.status,
         activation_epoch = EXCLUDED.activation_epoch,
         activation_ts = EXCLUDED.activation_ts,
         confidence = EXCLUDED.confidence,
         source_summary = EXCLUDED.source_summary,
+        details = EXCLUDED.details,
         last_updated_at = NOW()
     `, [
-      'eth-mainnet',
+      chainId,
       upgrade.forkName,
-      'scheduled',
+      upgrade.status,
       upgrade.activationEpoch || null,
-      upgrade.activationTimestamp ? new Date(upgrade.activationTimestamp * 1000) : null,
+      upgrade.activationTs,
       upgrade.confidence,
-      `${upgrade.forkName} upgrade - Source: ${upgrade.sourceUrl}`
+      upgrade.sourceSummary,
+      JSON.stringify(upgrade.details)
     ]);
+
+    await pool.query(
+      `INSERT INTO sources (chain_id, kind, url)
+       VALUES ($1, 'blog', $2)
+       ON CONFLICT (chain_id, kind, url) DO NOTHING`,
+      [chainId, upgrade.sourceUrl]
+    );
     
     // Calculate and insert countdown
-    let targetUnix: number;
-    
-    if (upgrade.activationEpoch) {
-      // Ethereum mainnet: genesisUnix: 1606824023, slotSeconds: 12, slotsPerEpoch: 32
-      targetUnix = 1606824023 + (upgrade.activationEpoch * 32 * 12);
-    } else if (upgrade.activationTimestamp) {
-      targetUnix = upgrade.activationTimestamp;
-    } else {
+    if (!upgrade.targetUnix) {
+      console.log(`  Skipping countdown for ${upgrade.forkName} (no activation target)`);
       continue;
     }
+    
+    // Ethereum mainnet: genesisUnix: 1606824023, slotSeconds: 12, slotsPerEpoch: 32
+    const targetUnix = upgrade.targetUnix;
     
     const bufferSeconds = 32 * 12; // 384 seconds (32 slots)
     
@@ -183,7 +314,7 @@ export async function scrapeEthereumBlog(): Promise<void> {
         window_high_ts = EXCLUDED.window_high_ts,
         confidence = EXCLUDED.confidence
     `, [
-      'eth-mainnet',
+      chainId,
       upgrade.forkName,
       targetUnix,
       targetUnix - bufferSeconds,

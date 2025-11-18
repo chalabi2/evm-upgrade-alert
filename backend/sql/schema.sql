@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS alert_subscriptions (
   id                    BIGSERIAL PRIMARY KEY,
   user_id               TEXT NOT NULL,
   chain_id              TEXT REFERENCES chains(id) ON DELETE CASCADE,
+  chain_ids             TEXT[],
   fork_filter           TEXT,
   stages                TEXT[] NOT NULL,
   alert_types           TEXT[] NOT NULL DEFAULT ARRAY['upgrades'],

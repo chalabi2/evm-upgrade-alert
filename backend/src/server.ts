@@ -29,18 +29,57 @@ type Upgrade = {
 const ALLOWED_CHANNELS = ['discord', 'slack', 'telegram'] as const;
 const ALLOWED_STAGES = ['proposed','approved','scheduled','queued','executed','canceled','release_posted','announced'] as const;
 const ALERT_TYPES = ['upgrades', 'chain_events', 'releases'] as const;
+const ALLOWED_HEADERS = 'Content-Type';
+const ALLOWED_METHODS = 'GET,POST,OPTIONS';
 
-function json(res: http.ServerResponse, code: number, payload: unknown) {
+const allowedCorsOrigins = process.env.CORS_ORIGIN
+  ?.split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+function resolveOrigin(requestOrigin?: string | null): string {
+  if (!allowedCorsOrigins || allowedCorsOrigins.length === 0) {
+    return requestOrigin || '*';
+  }
+  if (requestOrigin && allowedCorsOrigins.includes(requestOrigin)) {
+    return requestOrigin;
+  }
+  return allowedCorsOrigins[0];
+}
+
+function json(
+  res: http.ServerResponse,
+  code: number,
+  payload: unknown,
+  origin?: string | null
+) {
+  const responseOrigin = resolveOrigin(origin);
   const body = JSON.stringify(payload);
   res.writeHead(code, {
     'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(body)
+    'Content-Length': Buffer.byteLength(body),
+    'Access-Control-Allow-Origin': responseOrigin,
+    'Access-Control-Allow-Headers': ALLOWED_HEADERS,
+    'Access-Control-Allow-Methods': ALLOWED_METHODS,
+    'Vary': 'Origin'
   });
   res.end(body);
 }
 
-function notFound(res: http.ServerResponse) {
-  json(res, 404, { error: 'Not Found' });
+function notFound(res: http.ServerResponse, origin?: string | null) {
+  json(res, 404, { error: 'Not Found' }, origin);
+}
+
+function handleCorsPreflight(res: http.ServerResponse, origin?: string | null) {
+  const responseOrigin = resolveOrigin(origin);
+  res.writeHead(204, {
+    'Access-Control-Allow-Origin': responseOrigin,
+    'Access-Control-Allow-Headers': ALLOWED_HEADERS,
+    'Access-Control-Allow-Methods': ALLOWED_METHODS,
+    'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin'
+  });
+  res.end();
 }
 
 async function readBody(req: http.IncomingMessage): Promise<string> {
@@ -58,30 +97,50 @@ async function readBody(req: http.IncomingMessage): Promise<string> {
   });
 }
 
-const server = http.createServer(async (req, res) => {
+export async function handleRequest(
+  req: http.IncomingMessage,
+  res: http.ServerResponse
+): Promise<void> {
   try {
-    if (!req.url) return notFound(res);
+    const requestOrigin = req.headers.origin || null;
+
+    if (req.method === 'OPTIONS') {
+      handleCorsPreflight(res, requestOrigin);
+      return;
+    }
+
+    if (!req.url) {
+      notFound(res, requestOrigin);
+      return;
+    }
+
     const url = new URL(req.url, `http://localhost:${PORT}`);
     const pool = getPool();
 
     if (req.method === 'GET' && url.pathname === '/v1/countdowns') {
       const result = await pool.query('SELECT * FROM countdowns ORDER BY chain_id');
-      return json(res, 200, result.rows);
+      json(res, 200, result.rows, requestOrigin);
+      return;
     }
 
     if (req.method === 'GET' && url.pathname.startsWith('/v1/countdowns/')) {
       const chainId = decodeURIComponent(url.pathname.replace('/v1/countdowns/', ''));
       const result = await pool.query('SELECT * FROM countdowns WHERE chain_id = $1', [chainId]);
-      return result.rows.length > 0 ? json(res, 200, result.rows[0]) : notFound(res);
+      if (result.rows.length > 0) {
+        json(res, 200, result.rows[0], requestOrigin);
+      } else {
+        notFound(res, requestOrigin);
+      }
+      return;
     }
 
     if (req.method === 'GET' && url.pathname === '/v1/upgrades') {
       const status = url.searchParams.get('status');
       const chain = url.searchParams.get('chain');
-      
+
       let query = 'SELECT up.*, c.name as chain_name FROM upgrade_plans up JOIN chains c ON c.id = up.chain_id WHERE 1=1';
       const params: any[] = [];
-      
+
       if (status) {
         params.push(status);
         query += ` AND up.status = $${params.length}`;
@@ -90,57 +149,66 @@ const server = http.createServer(async (req, res) => {
         params.push(chain);
         query += ` AND up.chain_id = $${params.length}`;
       }
-      
+
       query += ' ORDER BY up.last_updated_at DESC';
-      
+
       const result = await pool.query(query, params);
-      return json(res, 200, result.rows);
+      json(res, 200, result.rows, requestOrigin);
+      return;
     }
 
     if (req.method === 'GET' && url.pathname.startsWith('/v1/upgrades/')) {
       const chainId = decodeURIComponent(url.pathname.replace('/v1/upgrades/', ''));
       const result = await pool.query('SELECT up.*, c.name as chain_name FROM upgrade_plans up JOIN chains c ON c.id = up.chain_id WHERE up.chain_id = $1 ORDER BY up.last_updated_at DESC', [chainId]);
-      return json(res, 200, result.rows);
+      json(res, 200, result.rows, requestOrigin);
+      return;
     }
 
     if (req.method === 'GET' && url.pathname === '/v1/chains') {
       const result = await pool.query('SELECT * FROM chains ORDER BY name');
-      return json(res, 200, result.rows);
+      json(res, 200, result.rows, requestOrigin);
+      return;
     }
 
     if (req.method === 'GET' && url.pathname.startsWith('/v1/chains/')) {
       const chainId = decodeURIComponent(url.pathname.replace('/v1/chains/', ''));
       const result = await pool.query('SELECT * FROM chains WHERE id = $1', [chainId]);
-      return result.rows.length > 0 ? json(res, 200, result.rows[0]) : notFound(res);
+      if (result.rows.length > 0) {
+        json(res, 200, result.rows[0], requestOrigin);
+      } else {
+        notFound(res, requestOrigin);
+      }
+      return;
     }
 
     if (req.method === 'GET' && url.pathname === '/v1/events') {
       const chain = url.searchParams.get('chain');
       const limit = parseInt(url.searchParams.get('limit') || '50');
-      
+
       let query = 'SELECT oe.*, c.name as chain_name FROM onchain_events oe JOIN chains c ON c.id = oe.chain_id WHERE 1=1';
       const params: any[] = [];
-      
+
       if (chain) {
         params.push(chain);
         query += ` AND oe.chain_id = $${params.length}`;
       }
-      
+
       params.push(limit);
       query += ` ORDER BY oe.occurred_at DESC LIMIT $${params.length}`;
-      
+
       const result = await pool.query(query, params);
-      return json(res, 200, result.rows);
+      json(res, 200, result.rows, requestOrigin);
+      return;
     }
 
     if (req.method === 'GET' && url.pathname === '/v1/releases') {
       const chain = url.searchParams.get('chain');
       const fork = url.searchParams.get('fork');
       const limit = parseInt(url.searchParams.get('limit') || '20');
-      
+
       let query = 'SELECT r.*, c.name as chain_name FROM releases r LEFT JOIN chains c ON c.id = r.chain_id WHERE 1=1';
       const params: any[] = [];
-      
+
       if (chain) {
         params.push(chain);
         query += ` AND r.chain_id = $${params.length}`;
@@ -149,12 +217,13 @@ const server = http.createServer(async (req, res) => {
         params.push(fork);
         query += ` AND r.fork_name = $${params.length}`;
       }
-      
+
       params.push(limit);
       query += ` ORDER BY r.published_at DESC LIMIT $${params.length}`;
-      
+
       const result = await pool.query(query, params);
-      return json(res, 200, result.rows);
+      json(res, 200, result.rows, requestOrigin);
+      return;
     }
 
     if (req.method === 'POST' && url.pathname === '/v1/alerts/subscribe') {
@@ -165,9 +234,22 @@ const server = http.createServer(async (req, res) => {
         const userId = typeof payload.user_id === 'string' && payload.user_id.trim().length > 0
           ? payload.user_id.trim()
           : `anonymous-${Date.now()}`;
-        const chainId = typeof payload.chain_id === 'string' && payload.chain_id.length > 0
-          ? payload.chain_id
+
+        const primaryChainId = typeof payload.chain_id === 'string' && payload.chain_id.trim().length > 0
+          ? payload.chain_id.trim()
           : null;
+        const requestedChainIds: string[] = Array.isArray(payload.chain_ids)
+          ? payload.chain_ids
+              .map((id: unknown) => (typeof id === 'string' ? id.trim() : ''))
+              .filter((id: string) => id.length > 0)
+          : [];
+        if (primaryChainId) {
+          requestedChainIds.push(primaryChainId);
+        }
+        const uniqueChainIds = Array.from(new Set(requestedChainIds));
+        const chainId = uniqueChainIds.length === 1 ? uniqueChainIds[0] : null;
+        const chainIds = uniqueChainIds.length > 1 ? uniqueChainIds : null;
+
         const forkFilter = typeof payload.fork_filter === 'string' && payload.fork_filter.length > 0
           ? payload.fork_filter
           : null;
@@ -178,7 +260,8 @@ const server = http.createServer(async (req, res) => {
           .filter((channel): channel is typeof ALLOWED_CHANNELS[number] => (ALLOWED_CHANNELS as readonly string[]).includes(channel));
 
         if (channels.length === 0) {
-          return json(res, 400, { error: 'At least one supported channel (discord, slack, telegram) is required.' });
+          json(res, 400, { error: 'At least one supported channel (discord, slack, telegram) is required.' }, requestOrigin);
+          return;
         }
 
         const requestedStages: string[] = Array.isArray(payload.stages) ? payload.stages : [];
@@ -203,25 +286,29 @@ const server = http.createServer(async (req, res) => {
         const telegramChatId = payload.telegram_chat_id ? encryptSecret(payload.telegram_chat_id) : null;
 
         if (channels.includes('discord') && !discordWebhook) {
-          return json(res, 400, { error: 'Discord channel requires discord_webhook.' });
+          json(res, 400, { error: 'Discord channel requires discord_webhook.' }, requestOrigin);
+          return;
         }
         if (channels.includes('slack') && !slackWebhook) {
-          return json(res, 400, { error: 'Slack channel requires slack_webhook.' });
+          json(res, 400, { error: 'Slack channel requires slack_webhook.' }, requestOrigin);
+          return;
         }
         if (channels.includes('telegram') && (!telegramBotToken || !telegramChatId)) {
-          return json(res, 400, { error: 'Telegram channel requires bot token and chat id.' });
+          json(res, 400, { error: 'Telegram channel requires bot token and chat id.' }, requestOrigin);
+          return;
         }
 
         const result = await pool.query(
           `INSERT INTO alert_subscriptions (
-            user_id, chain_id, fork_filter, stages, alert_types, channels,
+            user_id, chain_id, chain_ids, fork_filter, stages, alert_types, channels,
             discord_webhook, slack_webhook, telegram_bot_token, telegram_chat_id
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-          RETURNING id, user_id, chain_id, fork_filter, stages, alert_types, channels, created_at`,
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          RETURNING id, user_id, chain_id, chain_ids, fork_filter, stages, alert_types, channels, created_at`,
           [
             userId,
             chainId,
+            chainIds,
             forkFilter,
             stages,
             alertTypes,
@@ -233,24 +320,32 @@ const server = http.createServer(async (req, res) => {
           ]
         );
 
-        return json(res, 201, {
+        json(res, 201, {
           status: 'accepted',
           subscription: result.rows[0]
-        });
+        }, requestOrigin);
+        return;
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Invalid JSON';
-        return json(res, 400, { error: message });
+        json(res, 400, { error: message }, requestOrigin);
+        return;
       }
     }
 
     if (req.method === 'GET' && url.pathname === '/health') {
-      return json(res, 200, { status: 'ok', timestamp: new Date().toISOString() });
+      json(res, 200, { status: 'ok', timestamp: new Date().toISOString() }, requestOrigin);
+      return;
     }
 
-    return notFound(res);
+    notFound(res, requestOrigin);
   } catch (err) {
-    return json(res, 500, { error: 'Internal Server Error' });
+    const origin = req.headers.origin || null;
+    json(res, 500, { error: 'Internal Server Error' }, origin);
   }
+}
+
+const server = http.createServer((req, res) => {
+  void handleRequest(req, res);
 });
 
 if (process.env.NODE_ENV !== 'test') {

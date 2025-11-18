@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { getPool } from '../lib/db.js';
+import { timestampCountdown } from '../contracts/countdown.js';
 import { extractUpgradeInfo as llmExtractUpgradeInfo, extractUpgradeInfoFallback } from '../lib/llmExtractor.js';
+import { shouldSkipUpgradeProcessing, shouldSkipUpgradeProcessingBySource } from '../lib/upgradeCache.js';
 
 interface ForumTopic {
   id: number;
@@ -84,57 +86,77 @@ async function processUpgradeTopic(topic: ForumTopic): Promise<void> {
 
     const sourceUrl = `https://gov.optimism.io/t/${topic.slug}/${topic.id}`;
 
+    const chainId = 'op-mainnet';
+    let fallbackData = extractUpgradeInfoFallback(topic.title, firstPost.cooked);
+    const fallbackForkName = fallbackData.forkName;
+
+    if (await shouldSkipUpgradeProcessingBySource(chainId, sourceUrl)) {
+      console.log(`[Optimism Forum] Existing alert + LLM details found for source ${sourceUrl}. Skipping.`);
+      return;
+    }
+
+    if (fallbackForkName && await shouldSkipUpgradeProcessing(chainId, fallbackForkName)) {
+      console.log(`[Optimism Forum] Existing alert + LLM details found for ${fallbackForkName}. Skipping.`);
+      return;
+    }
+
     // Extract upgrade details using LLM (with fallback to regex)
     console.log(`[Optimism Forum] Extracting upgrade info using LLM...`);
     let llmExtraction = await llmExtractUpgradeInfo(topic.title, firstPost.cooked);
+    let llmExtracted = false;
     
     if (!llmExtraction) {
       console.log(`[Optimism Forum] LLM extraction failed, using fallback parser`);
-      const fallbackData = extractUpgradeInfoFallback(topic.title, firstPost.cooked);
+      if (!fallbackData.forkName) {
+        fallbackData = extractUpgradeInfoFallback(topic.title, firstPost.cooked);
+      }
       if (!fallbackData.forkName) {
         console.log(`[Optimism Forum] Could not extract upgrade info from: ${topic.title}`);
         return;
       }
       llmExtraction = fallbackData as any;
+    } else {
+      llmExtracted = true;
     }
 
     // Determine activation timestamp from multiple sources
     let activationTs: Date | null = null;
-    if (llmExtraction.unixTimestamp) {
+    if (llmExtraction?.unixTimestamp) {
       activationTs = new Date(llmExtraction.unixTimestamp * 1000);
-    } else if (llmExtraction.activationDate) {
+    } else if (llmExtraction?.activationDate) {
       activationTs = new Date(llmExtraction.activationDate);
-    } else if (llmExtraction.timeline?.mainnetActivation) {
+    } else if (llmExtraction?.timeline?.mainnetActivation) {
       activationTs = new Date(llmExtraction.timeline.mainnetActivation);
-    } else if (llmExtraction.timeline?.upgradeDate) {
+    } else if (llmExtraction?.timeline?.upgradeDate) {
       activationTs = new Date(llmExtraction.timeline.upgradeDate);
     }
 
     // Set status to scheduled if we have an activation date
-    let status = llmExtraction.status || 'proposed';
+    let status = llmExtraction?.status || 'proposed';
     if (activationTs && status === 'proposed') {
       status = 'scheduled';
     }
 
     const upgradeInfo = {
-      chainId: 'op-mainnet',
-      forkName: llmExtraction.forkName,
+      chainId,
+      forkName: llmExtraction?.forkName,
       status,
       activationTs,
-      description: llmExtraction.description,
+      description: llmExtraction?.description,
       details: {
-        keyPoints: llmExtraction.keyPoints || [],
-        affectedChains: llmExtraction.affectedChains || [],
-        technicalDetails: llmExtraction.technicalDetails || {},
-        timeline: llmExtraction.timeline || {},
-        links: llmExtraction.links || {},
-        stakeholders: llmExtraction.stakeholders || {},
-        risks: llmExtraction.risks || [],
-        requirements: llmExtraction.requirements || [],
+        keyPoints: llmExtraction?.keyPoints || [],
+        affectedChains: llmExtraction?.affectedChains || [],
+        technicalDetails: llmExtraction?.technicalDetails || {},
+        timeline: llmExtraction?.timeline || {},
+        links: llmExtraction?.links || {},
+        stakeholders: llmExtraction?.stakeholders || {},
+        risks: llmExtraction?.risks || [],
+        requirements: llmExtraction?.requirements || [],
         source: sourceUrl,
         extractedAt: new Date().toISOString(),
+        llmExtracted,
         // Store the unix timestamp if we have it
-        unixTimestamp: llmExtraction.unixTimestamp || null
+        unixTimestamp: llmExtraction?.unixTimestamp || null
       }
     };
 
@@ -172,6 +194,31 @@ async function processUpgradeTopic(topic: ForumTopic): Promise<void> {
        ON CONFLICT (chain_id, kind, url) DO NOTHING`,
       [upgradeInfo.chainId, sourceUrl]
     );
+
+    // Ensure countdown exists for OP Stack chains
+    if (activationTs) {
+      const targetUnix = Math.floor(activationTs.getTime() / 1000);
+      const window = timestampCountdown(targetUnix, 1800);
+
+      await pool.query(
+        `INSERT INTO countdowns (chain_id, fork_name, target_ts, window_low_ts, window_high_ts, confidence)
+         VALUES ($1, $2, to_timestamp($3), to_timestamp($4), to_timestamp($5), $6)
+         ON CONFLICT (chain_id) DO UPDATE SET
+           fork_name = EXCLUDED.fork_name,
+           target_ts = EXCLUDED.target_ts,
+           window_low_ts = EXCLUDED.window_low_ts,
+           window_high_ts = EXCLUDED.window_high_ts,
+           confidence = EXCLUDED.confidence`,
+        [
+          upgradeInfo.chainId,
+          upgradeInfo.forkName,
+          window.targetUnix,
+          window.windowLowUnix ?? null,
+          window.windowHighUnix ?? null,
+          window.confidence
+        ]
+      );
+    }
 
   } catch (error) {
     console.error(`[Optimism Forum] Error processing topic ${topic.id}:`, error);

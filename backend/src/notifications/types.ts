@@ -11,6 +11,23 @@ export type AlertStage =
   | 'executed'
   | 'canceled';
 
+export interface AlertTimelineDetails {
+  upgradeDate?: string | null;
+  mainnetActivation?: string | null;
+}
+
+export interface AlertDetails {
+  source?: string | null;
+  unixTimestamp?: number | null;
+  timeline?: AlertTimelineDetails | null;
+  keyPoints?: string[];
+  requirements?: string[];
+  risks?: string[];
+  technicalDetails?: Record<string, unknown> | null;
+  stakeholders?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+
 export type AlertPayload = {
   chain_id: string;
   chain_name?: string;
@@ -24,7 +41,7 @@ export type AlertPayload = {
   window_high_ts?: string | null;
   confidence: number;
   links?: string[];
-  details?: Record<string, unknown>;
+  details?: AlertDetails;
 };
 
 export type NotificationChannel = 'discord' | 'telegram' | 'slack' | 'webhook' | 'email';

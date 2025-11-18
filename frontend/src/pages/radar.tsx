@@ -1,14 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
-import {
-  Activity,
-  Calendar,
-  Clock,
-  ExternalLink,
-  GitBranch,
-  Info,
-} from "lucide-react";
+import { Activity, Calendar, Clock, ExternalLink, Info } from "lucide-react";
 import { useUpgrades } from "@/hooks/useUpgrades";
 import { useCountdowns } from "@/hooks/useCountdowns";
 import { useReleases } from "@/hooks/useReleases";
@@ -32,6 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const DAY_IN_MS = 86_400_000;
@@ -42,8 +36,9 @@ export function Radar() {
   const { data: scheduledUpgrades, isLoading: upgradesLoading } = useUpgrades({
     status: "scheduled",
   });
-  const { data: countdowns, isLoading: countdownsLoading } = useCountdowns();
 
+  const { data: countdowns, isLoading: countdownsLoading } = useCountdowns();
+  const [isUpgradeHovered, setIsUpgradeHovered] = useState<string | null>(null);
   const upgradeLookup = useMemo(() => {
     const map = new Map<string, Upgrade>();
     (scheduledUpgrades ?? []).forEach((upgrade) => {
@@ -76,6 +71,7 @@ export function Radar() {
       const bTs = b.activation_ts
         ? new Date(b.activation_ts).getTime()
         : Number.MAX_SAFE_INTEGER;
+
       return aTs - bTs;
     });
   }, [scheduledUpgrades]);
@@ -112,63 +108,72 @@ export function Radar() {
           <RadarBackground
             blips={radarBlips}
             className="fixed inset-0 -z-10 flex items-center justify-center"
+            focusedUpgrade={isUpgradeHovered}
           />,
           document.body
         )}
       <div className="relative space-y-12">
-        <section className="space-y-8">
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-3">
-              <p className="text-sm font-semibold uppercase tracking-widest text-primary">
-                Upgrade radar
-              </p>
-              <h1 className="text-4xl font-bold tracking-tight">
-                Track L1 and L2 upgrades
-              </h1>
-              <p className="text-base text-muted-foreground">
-                Live countdowns and links to client releases to stay
-                synchronized on chain upgrades.
-              </p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:w-1/2">
-              <StatCard
-                label="Active countdowns"
-                value={countdownDetails.length}
-                icon={<Clock className="h-5 w-5 text-primary" />}
-                helper="Chains entering an activation window"
-              />
-              <StatCard
-                label="Scheduled upgrades"
-                value={orderedUpgrades.length}
-                icon={<Activity className="h-5 w-5 text-primary" />}
-                helper="Forks with confirmed timelines"
-              />
-            </div>
-          </div>
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 1 }}
+            animate={{ opacity: isUpgradeHovered ? 0 : 1 }}
+            exit={{ opacity: isUpgradeHovered ? 1 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <section className="space-y-8">
+              <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+                    Upgrade radar
+                  </p>
+                  <h1 className="text-4xl font-bold tracking-tight">
+                    Track L1 and L2 upgrades
+                  </h1>
+                  <p className="text-base text-muted-foreground">
+                    Live countdowns and links to client releases to stay
+                    synchronized on chain upgrades.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:w-1/2">
+                  <StatCard
+                    label="Active countdowns"
+                    value={countdownDetails.length}
+                    icon={<Clock className="h-5 w-5 text-primary" />}
+                    helper="Chains entering an activation window"
+                  />
+                  <StatCard
+                    label="Scheduled upgrades"
+                    value={orderedUpgrades.length}
+                    icon={<Activity className="h-5 w-5 text-primary" />}
+                    helper="Forks with confirmed timelines"
+                  />
+                </div>
+              </div>
 
-          <div className="space-y-6">
-            {countdownDetails.length > 0 ? (
-              countdownDetails.map(({ countdown, upgrade }) => (
-                <CountdownShowcase
-                  key={`${countdown.chain_id}-${countdown.fork_name}`}
-                  countdown={countdown}
-                  upgrade={upgrade}
-                />
-              ))
-            ) : (
-              <Card className="border-dashed">
-                <CardHeader>
-                  <CardTitle>No active countdowns</CardTitle>
-                  <CardDescription>
-                    We&apos;ll promote the next upgrade window here as soon as a
-                    precise target is available.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            )}
-          </div>
-        </section>
-
+              <div className="space-y-6">
+                {countdownDetails.length > 0 ? (
+                  countdownDetails.map(({ countdown, upgrade }) => (
+                    <CountdownShowcase
+                      key={`${countdown.chain_id}-${countdown.fork_name}`}
+                      countdown={countdown}
+                      upgrade={upgrade}
+                    />
+                  ))
+                ) : (
+                  <Card className="border-dashed">
+                    <CardHeader>
+                      <CardTitle>No active countdowns</CardTitle>
+                      <CardDescription>
+                        We&apos;ll promote the next upgrade window here as soon
+                        as a precise target is available.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                )}
+              </div>
+            </section>
+          </motion.div>
+        </AnimatePresence>
         <section className="space-y-6">
           <div className="space-y-2">
             <h2 className="text-3xl font-semibold tracking-tight">
@@ -182,7 +187,12 @@ export function Radar() {
           {orderedUpgrades.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {orderedUpgrades.map((upgrade) => (
-                <ScheduledUpgradeCard key={upgrade.id} upgrade={upgrade} />
+                <ScheduledUpgradeCard
+                  key={upgrade.id}
+                  upgrade={upgrade}
+                  isUpgradeHovered={isUpgradeHovered}
+                  setIsUpgradeHovered={setIsUpgradeHovered}
+                />
               ))}
             </div>
           ) : (
@@ -260,8 +270,6 @@ function CountdownShowcase({ countdown, upgrade }: CountdownShowcaseProps) {
     upgrade?.source_summary ??
     "We are monitoring this fork for more implementation details.";
 
-  const keyPoints = upgrade?.details?.keyPoints?.slice(0, 3) ?? [];
-
   const segments = [
     { label: "Days", value: padTimeUnit(timeParts.days) },
     { label: "Hours", value: padTimeUnit(timeParts.hours) },
@@ -335,25 +343,6 @@ function CountdownShowcase({ countdown, upgrade }: CountdownShowcaseProps) {
           </div>
           <p className="mt-2 text-sm text-muted-foreground">{summary}</p>
         </div>
-
-        {keyPoints.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <GitBranch className="h-4 w-4 text-primary" />
-              Key points to watch
-            </div>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              {keyPoints.map((point, index) => (
-                <li
-                  key={`${countdown.chain_id}-${index}`}
-                  className="rounded-md border bg-background/70 p-3"
-                >
-                  {point}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
@@ -372,10 +361,17 @@ function InfoTile({ label, value }: { label: string; value: string }) {
 
 interface ScheduledUpgradeCardProps {
   upgrade: Upgrade;
+  isUpgradeHovered: string | null;
+  setIsUpgradeHovered: (isUpgradeHovered: string | null) => void;
 }
 
-function ScheduledUpgradeCard({ upgrade }: ScheduledUpgradeCardProps) {
+function ScheduledUpgradeCard({
+  upgrade,
+  setIsUpgradeHovered,
+  isUpgradeHovered,
+}: ScheduledUpgradeCardProps) {
   const [open, setOpen] = useState(false);
+
   const { data: releases, isLoading: releasesLoading } = useReleases(
     { chain: upgrade.chain_id, fork: upgrade.fork_name, limit: 5 },
     { enabled: open }
@@ -390,7 +386,25 @@ function ScheduledUpgradeCard({ upgrade }: ScheduledUpgradeCardProps) {
           type="button"
           className="group block w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
         >
-          <Card className="h-full border-primary/10 transition hover:-translate-y-1 hover:border-primary/40 group-focus-visible:border-primary/60">
+          <Card
+            onMouseEnter={() =>
+              setIsUpgradeHovered(upgrade.fork_name.toString())
+            }
+            onMouseLeave={() => setIsUpgradeHovered(null)}
+            className={cn(
+              "h-full border-primary/10 transition hover:-translate-y-1 hover:border-primary/40 group-focus-visible:border-primary/60",
+              isUpgradeHovered === upgrade.fork_name.toString() &&
+                "border-2 border-primary"
+            )}
+          >
+            {isUpgradeHovered === upgrade.fork_name.toString() && (
+              <motion.div
+                className=""
+                initial={{ scale: 1.5, opacity: 1 }}
+                animate={{ scale: 8, opacity: 1 }}
+                exit={{ scale: 1.5, opacity: 1 }}
+              />
+            )}
             <CardHeader className="space-y-2">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
@@ -546,8 +560,8 @@ function ReleasesList({ releases, isLoading }: ReleasesListProps) {
           <Button variant="outline" size="sm" asChild>
             <a href={release.url} target="_blank" rel="noreferrer">
               View release
-              <ExternalLink className="h-4 w-4" />
             </a>
+            <ExternalLink className="h-4 w-4 ml-auto" />
           </Button>
         </li>
       ))}

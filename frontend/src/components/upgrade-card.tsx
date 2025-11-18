@@ -1,34 +1,42 @@
-import { Calendar, GitBranch, AlertCircle } from 'lucide-react';
-import type { Upgrade } from '@/types/api';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
+import { Calendar, GitBranch, AlertCircle } from "lucide-react";
+import type { Upgrade } from "@/types/api";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
+import { Badge, type BadgeProps } from "./ui/badge";
 
 interface UpgradeCardProps {
   upgrade: Upgrade;
 }
 
 const statusColors: Record<string, string> = {
-  proposed: 'secondary',
-  approved: 'default',
-  scheduled: 'default',
-  queued: 'default',
-  executed: 'secondary',
-  canceled: 'destructive',
-  release_posted: 'default',
-  announced: 'default',
+  proposed: "secondary",
+  approved: "default",
+  scheduled: "default",
+  queued: "default",
+  executed: "secondary",
+  canceled: "destructive",
+  release_posted: "default",
+  announced: "default",
 };
 
 export function UpgradeCard({ upgrade }: UpgradeCardProps) {
   return (
-    <Card>
+    <Card className="group relative overflow-hidden border-2 border-transparent transition-colors duration-300 group-hover:border-primary group-hover:ring-4 ring-primary animate-pulse">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <CardTitle className="text-lg">{upgrade.fork_name}</CardTitle>
             <CardDescription>{upgrade.chain_name}</CardDescription>
           </div>
-          <Badge variant={statusColors[upgrade.status] as any}>
-            {upgrade.status.replace('_', ' ')}
+          <Badge
+            variant={statusColors[upgrade.status] as BadgeProps["variant"]}
+          >
+            {upgrade.status.replace("_", " ")}
           </Badge>
         </div>
       </CardHeader>
@@ -76,10 +84,11 @@ export function UpgradeCard({ upgrade }: UpgradeCardProps) {
 
         <div className="flex items-center justify-between pt-2 text-xs text-muted-foreground">
           <span>Confidence: {Math.round(upgrade.confidence * 100)}%</span>
-          <span>Updated: {new Date(upgrade.last_updated_at).toLocaleDateString()}</span>
+          <span>
+            Updated: {new Date(upgrade.last_updated_at).toLocaleDateString()}
+          </span>
         </div>
       </CardContent>
     </Card>
   );
 }
-

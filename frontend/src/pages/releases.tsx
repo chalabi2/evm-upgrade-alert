@@ -1,25 +1,25 @@
-import { useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
-import { Calendar, ExternalLink, GitBranch, Layers } from 'lucide-react';
-import { useReleases } from '@/hooks/useReleases';
-import { useChains } from '@/hooks/useChains';
+import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { Calendar, ExternalLink, GitBranch, Layers } from "lucide-react";
+import { useReleases } from "@/hooks/useReleases";
+import { useChains } from "@/hooks/useChains";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { FilterToolbar } from '@/components/filter-toolbar';
-import { FilterOperator, FilterType } from '@/components/ui/filters';
-import type { Filter, FilterOption } from '@/components/ui/filters';
-import type { Release } from '@/types/api';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { FilterToolbar } from "@/components/filter-toolbar";
+import { FilterOperator, FilterType } from "@/components/ui/filters";
+import type { Filter, FilterOption } from "@/components/ui/filters";
+import type { Release } from "@/types/api";
+import { Button } from "@/components/ui/button";
 
 export function Releases() {
   const [filters, setFilters] = useState<Filter[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const { data: allReleases, isLoading } = useReleases({ limit: 200 });
   const { data: chains } = useChains();
 
@@ -67,7 +67,7 @@ export function Releases() {
           release.tag.toLowerCase().includes(query) ||
           release.repo.toLowerCase().includes(query) ||
           release.chain_name.toLowerCase().includes(query) ||
-          release.fork_name?.toLowerCase().includes(query ?? '');
+          release.fork_name?.toLowerCase().includes(query ?? "");
 
         if (!matchesSearch) return false;
       }
@@ -237,7 +237,9 @@ function ReleaseCard({ release }: { release: Release }) {
       <CardHeader className="space-y-2">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <CardTitle className="text-xl font-semibold">{release.tag}</CardTitle>
+            <CardTitle className="text-xl font-semibold">
+              {release.tag}
+            </CardTitle>
             <CardDescription>{release.repo}</CardDescription>
           </div>
           <Badge variant="outline">
@@ -267,11 +269,16 @@ function ReleaseCard({ release }: { release: Release }) {
           Published {formatDateTime(release.published_at)}
         </div>
 
-        <Button variant="outline" size="sm" asChild className="w-full justify-center">
+        <Button
+          variant="outline"
+          size="sm"
+          asChild
+          className="w-full justify-center"
+        >
           <a href={release.url} target="_blank" rel="noreferrer">
             View release
-            <ExternalLink className="h-4 w-4" />
           </a>
+          <ExternalLink className="h-4 w-4" />
         </Button>
       </CardContent>
     </Card>
@@ -280,8 +287,7 @@ function ReleaseCard({ release }: { release: Release }) {
 
 function formatDateTime(value?: string | null) {
   if (!value) {
-    return 'TBD';
+    return "TBD";
   }
   return new Date(value).toLocaleString();
 }
-

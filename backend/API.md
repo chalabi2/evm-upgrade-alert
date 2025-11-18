@@ -341,7 +341,7 @@ delivery.
 ```json
 {
   "user_id": "runbook-team",
-  "chain_id": "eth-mainnet",
+  "chain_ids": ["eth-mainnet", "op-mainnet"],
   "fork_filter": "deneb",
   "stages": ["scheduled", "executed"],
   "alert_types": ["upgrades", "chain_events"],
@@ -360,7 +360,8 @@ delivery.
   "subscription": {
     "id": 42,
     "user_id": "runbook-team",
-    "chain_id": "eth-mainnet",
+    "chain_id": null,
+    "chain_ids": ["eth-mainnet", "op-mainnet"],
     "fork_filter": "deneb",
     "stages": ["scheduled", "executed"],
     "alert_types": ["upgrades", "chain_events"],
@@ -372,6 +373,10 @@ delivery.
 
 Supported channels: `discord`, `slack`, `telegram`. Supported `alert_types`:
 `upgrades`, `chain_events`, `releases`.
+
+`chain_id` is accepted for single-chain subscriptions. Provide `chain_ids`
+with multiple chain identifiers to scope alerts to a custom list. Omitting both
+fields subscribes the contact to alerts from every chain.
 
 ---
 

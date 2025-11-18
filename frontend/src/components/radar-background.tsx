@@ -12,12 +12,19 @@ export interface RadarBlip {
 interface RadarBackgroundProps {
   blips: RadarBlip[];
   className?: string;
+  focusedUpgrade?: string | null;
 }
 
 const CONCENTRIC_STOPS = [10, 25, 40, 55, 70];
 const RADIAL_LINES = [0, 45, 90, 135];
 
-export function RadarBackground({ blips, className }: RadarBackgroundProps) {
+export function RadarBackground({
+  blips,
+  className,
+  focusedUpgrade,
+}: RadarBackgroundProps) {
+  console.log(focusedUpgrade);
+  console.log(blips);
   return (
     <div
       className={cn(
@@ -72,39 +79,38 @@ export function RadarBackground({ blips, className }: RadarBackgroundProps) {
             {blips.map((blip) => {
               const radialX = Math.cos(blip.angle) * blip.radius;
               const radialY = Math.sin(blip.angle) * blip.radius;
-              const delay = (blip.intensity * -3).toFixed(2);
+
               const left = 50 + radialX;
               const top = 50 + radialY;
 
+              const isFocused = focusedUpgrade === blip.label;
+
               return (
-                <div
+                <motion.div
                   key={blip.id}
-                  className="radar-blip absolute z-20 flex flex-col items-center text-center text-xs font-medium text-primary"
+                  className="radar-blip absolute z-40 flex flex-col items-center text-center text-xs font-medium text-primary bg-transparent rounded-full"
                   style={{
                     left: `${left}%`,
                     top: `${top}%`,
                     transform: "translate(-50%, -50%)",
-                    opacity: 0.5 + blip.intensity * 0.5,
+                    opacity: 1,
                   }}
                 >
-                  <span className="radar-blip-dot relative mb-1 flex h-3 w-3 items-center justify-center">
-                    <span className="h-2 w-2 rounded-full bg-primary" />
-                    <motion.span
-                      className="absolute inline-block h-2 w-2 rounded-full border border-primary/70"
-                      initial={{ scale: 0.5, opacity: 0.8 }}
-                      animate={{ scale: 2.5, opacity: 0 }}
-                      transition={{
-                        duration: 2.6,
-                        repeat: Infinity,
-                        ease: "easeOut",
-                        delay: parseFloat(delay),
-                      }}
-                    />
+                  <span className="radar-blip-dot relative mb-1 flex h-7 w-7 items-center justify-center bg-transparent rounded-full">
+                    <span className="h-6 w-6 rounded-full bg-primary" />
+                    {isFocused && (
+                      <motion.span
+                        className="absolute inline-block h-3 w-3 rounded-full border border-primary bg-primary"
+                        initial={{ scale: 1.5, opacity: 0 }}
+                        animate={{ scale: 8, opacity: 1 }}
+                        exit={{ scale: 1.5, opacity: 0 }}
+                      />
+                    )}
                   </span>
-                  <span className="radar-blip-label rounded-full bg-background/60 px-2 py-0.5 text-[10px] uppercase tracking-widest text-primary backdrop-blur">
+                  <span className="radar-blip-label text-2xl font-bold rounded-full bg-background/60 px-2 py-0.5 text-[10px] uppercase tracking-widest text-primary backdrop-blur">
                     {blip.label}
                   </span>
-                </div>
+                </motion.div>
               );
             })}
           </div>
