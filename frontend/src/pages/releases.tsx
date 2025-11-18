@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Calendar, ExternalLink, GitBranch, Layers } from "lucide-react";
 import { useReleases } from "@/hooks/useReleases";
 import { useChains } from "@/hooks/useChains";
+import { AlertsBackground } from "@/components/alerts-background";
 import {
   Card,
   CardContent,
@@ -22,6 +24,8 @@ export function Releases() {
   const [searchQuery, setSearchQuery] = useState("");
   const { data: allReleases, isLoading } = useReleases({ limit: 200 });
   const { data: chains } = useChains();
+  const isBrowser =
+    typeof window !== "undefined" && typeof document !== "undefined";
 
   const chainOptions: FilterOption[] = useMemo(
     () =>
@@ -109,8 +113,14 @@ export function Releases() {
   ).size;
 
   return (
-    <div className="space-y-12">
-      <section className="space-y-8">
+    <>
+      {isBrowser &&
+        createPortal(
+          <AlertsBackground className="fixed inset-0 -z-10" />,
+          document.body
+        )}
+      <div className="space-y-12">
+        <section className="space-y-8">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <p className="text-sm font-semibold uppercase tracking-widest text-primary">

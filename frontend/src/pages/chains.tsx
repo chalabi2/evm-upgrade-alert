@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Globe, Layers, Map, Zap } from 'lucide-react';
 import { useChains } from '@/hooks/useChains';
 import {
@@ -11,9 +12,12 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Chain } from '@/types/api';
+import { AlertsBackground } from '@/components/alerts-background';
 
 export function Chains() {
   const { data: chains, isLoading } = useChains();
+  const isBrowser =
+    typeof window !== 'undefined' && typeof document !== 'undefined';
 
   const stats = useMemo(() => {
     if (!chains) {
@@ -33,8 +37,14 @@ export function Chains() {
   }
 
   return (
-    <div className="space-y-12">
-      <section className="space-y-8">
+    <>
+      {isBrowser &&
+        createPortal(
+          <AlertsBackground className="fixed inset-0 -z-10" />,
+          document.body,
+        )}
+      <div className="space-y-12">
+        <section className="space-y-8">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <p className="text-sm font-semibold uppercase tracking-widest text-primary">
