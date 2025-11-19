@@ -107,7 +107,7 @@ export function RadarBackground({
                       />
                     )}
                   </span>
-                  <span className="radar-blip-label text-2xl font-bold rounded-full bg-background/60 px-2 py-0.5 text-[10px] uppercase tracking-widest text-primary backdrop-blur">
+                  <span className="radar-blip-label text-2xl font-bold rounded-full bg-background/60 px-2 py-0.5 text-[15px] uppercase tracking-widest text-primary backdrop-blur">
                     {blip.label}
                   </span>
                 </motion.div>

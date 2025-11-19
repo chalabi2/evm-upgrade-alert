@@ -121,99 +121,100 @@ export function Releases() {
         )}
       <div className="space-y-12">
         <section className="space-y-8">
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-3">
-            <p className="text-sm font-semibold uppercase tracking-widest text-primary">
-              Release radar
-            </p>
-            <h1 className="text-4xl font-bold tracking-tight">
-              Track client drops per chain
-            </h1>
-            <p className="text-base text-muted-foreground">
-              Filter client artifacts by chain, fork, or repository to align
-              validators before every upgrade.
-            </p>
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-3">
+              <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+                Release radar
+              </p>
+              <h1 className="text-4xl font-bold tracking-tight">
+                Track client releases per chain
+              </h1>
+              <p className="text-base text-muted-foreground">
+                Find which pieces of software you need to update before every
+                upgrade takes place.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3 lg:w-1/2">
+              <StatCard
+                label="Published releases"
+                value={totalReleases}
+                helper="Latest 200 artifacts"
+                icon={<Layers className="h-5 w-5 text-primary" />}
+              />
+              <StatCard
+                label="Chains"
+                value={chainsCovered}
+                helper="Networks with fresh builds"
+                icon={<GitBranch className="h-5 w-5 text-primary" />}
+              />
+              <StatCard
+                label="Repositories"
+                value={uniqueRepos}
+                helper="Distinct client repos"
+                icon={<ExternalLink className="h-5 w-5 text-primary" />}
+              />
+            </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3 lg:w-1/2">
-            <StatCard
-              label="Published releases"
-              value={totalReleases}
-              helper="Latest 200 artifacts"
-              icon={<Layers className="h-5 w-5 text-primary" />}
-            />
-            <StatCard
-              label="Chains"
-              value={chainsCovered}
-              helper="Networks with fresh builds"
-              icon={<GitBranch className="h-5 w-5 text-primary" />}
-            />
-            <StatCard
-              label="Repositories"
-              value={uniqueRepos}
-              helper="Distinct client repos"
-              icon={<ExternalLink className="h-5 w-5 text-primary" />}
-            />
-          </div>
-        </div>
 
-        <Card>
-          <CardHeader className="space-y-2">
-            <CardTitle>Filter the release stream</CardTitle>
-            <CardDescription>
-              Combine chain filters with search to find the repo, fork, or tag
-              you need.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FilterToolbar
-              filters={filters}
-              setFilters={setFilters}
-              config={filterConfig}
-              searchValue={searchQuery}
-              onSearchChange={setSearchQuery}
-              searchPlaceholder="Search tags, repos, forks..."
-            />
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="space-y-6">
-        <div className="space-y-2">
-          <h2 className="text-3xl font-semibold tracking-tight">
-            Latest artifacts
-          </h2>
-          <p className="text-muted-foreground">
-            Click any card to jump directly to the official release notes.
-          </p>
-        </div>
-
-        {isLoading ? (
-          <Card className="border-dashed">
-            <CardHeader>
-              <CardTitle>Loading releases…</CardTitle>
+          <Card className="bg-background">
+            <CardHeader className="space-y-2">
+              <CardTitle>Filter the release stream</CardTitle>
               <CardDescription>
-                Syncing the latest artifacts across monitored repos.
+                Combine chain filters with search to find the repo, fork, or tag
+                you need.
               </CardDescription>
             </CardHeader>
+            <CardContent>
+              <FilterToolbar
+                filters={filters}
+                setFilters={setFilters}
+                config={filterConfig}
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+                searchPlaceholder="Search tags, repos, forks..."
+              />
+            </CardContent>
           </Card>
-        ) : filteredReleases.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {filteredReleases.slice(0, 60).map((release) => (
-              <ReleaseCard key={release.id} release={release} />
-            ))}
+        </section>
+
+        <section className="space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-3xl font-semibold tracking-tight">
+              Latest artifacts
+            </h2>
+            <p className="text-muted-foreground">
+              Click any card to jump directly to the official release notes.
+            </p>
           </div>
-        ) : (
-          <Card className="border-dashed">
-            <CardHeader>
-              <CardTitle>No releases match</CardTitle>
-              <CardDescription>
-                Broaden your filters or clear the search query.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        )}
-      </section>
-    </div>
+
+          {isLoading ? (
+            <Card className="border-dashed">
+              <CardHeader>
+                <CardTitle>Loading releases…</CardTitle>
+                <CardDescription>
+                  Syncing the latest artifacts across monitored repos.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ) : filteredReleases.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {filteredReleases.slice(0, 60).map((release) => (
+                <ReleaseCard key={release.id} release={release} />
+              ))}
+            </div>
+          ) : (
+            <Card className="border-dashed">
+              <CardHeader>
+                <CardTitle>No releases match</CardTitle>
+                <CardDescription>
+                  Broaden your filters or clear the search query.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+        </section>
+      </div>
+    </>
   );
 }
 
@@ -226,7 +227,7 @@ interface StatCardProps {
 
 function StatCard({ label, value, helper, icon }: StatCardProps) {
   return (
-    <Card className="border-primary/10">
+    <Card className="border-primary/10 bg-background">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {label}
@@ -288,7 +289,7 @@ function ReleaseCard({ release }: { release: Release }) {
           <a href={release.url} target="_blank" rel="noreferrer">
             View release
           </a>
-          <ExternalLink className="h-4 w-4" />
+          <ExternalLink className="ml-2 h-4 w-4" />
         </Button>
       </CardContent>
     </Card>

@@ -446,6 +446,7 @@ export function Alerts() {
                               }));
                             }
                           }}
+                          onSelect={(e) => e.preventDefault()}
                         >
                           All chains
                         </DropdownMenuCheckboxItem>
@@ -463,6 +464,7 @@ export function Alerts() {
                                 return { ...prev, chainIds: nextIds };
                               })
                             }
+                            onSelect={(e) => e.preventDefault()}
                           >
                             {chain.name}
                           </DropdownMenuCheckboxItem>
@@ -780,15 +782,15 @@ function SchedulerCountdown() {
   });
 
   return (
-    <div className="rounded-xl border border-primary/20 bg-background/90 p-4 shadow-lg">
-      <div className="flex items-center justify-between gap-4">
+    <div className="w-full rounded-xl border border-primary/20 bg-background/90 p-4 shadow-lg lg:w-auto lg:min-w-[280px] lg:max-w-sm">
+      <div className="flex items-center gap-6">
         <div className="space-y-0.5">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
             Next Scan
           </p>
           <p className="text-sm text-muted-foreground">{nextRunLabel}</p>
         </div>
-        <p className="font-mono text-2xl font-bold tabular-nums text-primary">
+        <p className="ml-auto font-mono text-2xl font-bold tabular-nums text-primary">
           {countdown}
         </p>
       </div>
