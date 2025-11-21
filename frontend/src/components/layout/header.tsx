@@ -5,7 +5,6 @@ import { ModeToggle } from "../ui/mode-toggle";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
