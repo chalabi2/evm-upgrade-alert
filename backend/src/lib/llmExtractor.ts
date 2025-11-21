@@ -294,7 +294,7 @@ ${JSON.stringify(EXTRACTION_SCHEMA, null, 2)}`
            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        timeout: 60000
+        timeout: 120000
       }
     );
 
