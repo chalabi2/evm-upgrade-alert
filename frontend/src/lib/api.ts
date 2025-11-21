@@ -10,7 +10,7 @@ import type {
   AlertSubscriptionResponse,
 } from '@/types/api';
 
-const API_BASE_URL = '/';
+const API_BASE_URL = 'https://backend.upgradar.xyz/';
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, options);

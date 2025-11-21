@@ -14,17 +14,4 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  server: {
-    port: 5173,
-    proxy: {
-      '/v1': {
-        target: 'https://backend.upgradar.xyz',
-        changeOrigin: true,
-      },
-      '/health': {
-        target: 'https://backend.upgradar.xyz',
-        changeOrigin: true,
-      },
-    },
-  },
 })

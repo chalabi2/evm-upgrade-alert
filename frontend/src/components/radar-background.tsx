@@ -23,8 +23,6 @@ export function RadarBackground({
   className,
   focusedUpgrade,
 }: RadarBackgroundProps) {
-  console.log(focusedUpgrade);
-  console.log(blips);
   return (
     <div
       className={cn(
