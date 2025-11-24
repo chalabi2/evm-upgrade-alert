@@ -74,11 +74,24 @@ export function RadarBackground({
             <div className="radar-beam absolute inset-0 rounded-full" />
             <div className="radar-glow absolute inset-[10%] rounded-full" />
 
-            {blips.map((blip) => {
-              const radialX = Math.cos(blip.angle) * blip.radius;
-              const radialY = Math.sin(blip.angle) * blip.radius;
+            {blips.map((blip, index) => {
+              // Calculate the opposite angle for every other blip
+              const isFlipped = index % 2 === 1;
+              let angle = blip.angle;
+              const radius = blip.radius;
 
-              const left = 50 + radialX;
+              if (isFlipped) {
+                // Calculate opposite angle (180 degrees away)
+                const flippedAngle = (blip.angle + Math.PI) % (2 * Math.PI);
+                // Ensure angle is positive
+                angle =
+                  flippedAngle < 0 ? flippedAngle + 2 * Math.PI : flippedAngle;
+              }
+
+              const radialX = Math.cos(angle) * radius;
+              const radialY = Math.sin(angle) * radius;
+
+              const left = isFlipped ? 58 - radialX : 42 - radialX;
               const top = 50 + radialY;
 
               const isFocused = focusedUpgrade === blip.label;

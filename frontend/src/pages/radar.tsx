@@ -278,7 +278,7 @@ function CountdownShowcase({ countdown, upgrade }: CountdownShowcaseProps) {
   ];
 
   return (
-    <Card className="overflow-hidden border-primary/20 bg-linear-to-br from-primary/5 via-background to-background shadow-lg">
+    <Card className="overflow-hidden border-primary/20 bg-background/20 backdrop-blur-sm shadow-lg">
       <CardHeader className="space-y-2">
         <div className="text-sm font-semibold uppercase tracking-widest text-primary">
           {upgrade?.chain_name ?? countdown.chain_id}
